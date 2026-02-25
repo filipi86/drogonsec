@@ -48,6 +48,15 @@ func init() {
 
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 
+	// Show banner on -h / --help for all commands.
+	// PersistentPreRun handles banner for normal execution; Cobra skips
+	// PreRun hooks for help, so we override HelpFunc here instead.
+	origHelp := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		PrintDragonBanner()
+		origHelp(cmd, args)
+	})
+
 	// Register sub-commands
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(versionCmd)

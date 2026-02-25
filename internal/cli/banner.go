@@ -50,6 +50,16 @@ func PrintDragonBanner() {
 		return nCyan("  ║ ") + padTo(content, W-1) + nCyan("║")
 	}
 
+	// centerIn centers content inside a boxLine (accounts for ANSI codes).
+	centerIn := func(content string) string {
+		vl := visualLen(content)
+		pad := (W - 1 - vl) / 2
+		if pad < 0 {
+			pad = 0
+		}
+		return strings.Repeat(" ", pad) + content
+	}
+
 	fmt.Println()
 	fmt.Println(topBdr)
 	fmt.Println(boxLine(
@@ -58,23 +68,24 @@ func PrintDragonBanner() {
 			dim("  │  SAST · SCA · LEAKS · GIT-HISTORY · IaC")))
 	fmt.Println(midBdr)
 
-	// ── DROGONSEC  — large ASCII title (inside frame) ─────────────────────────
-	fmt.Println(boxLine(""))
-	fmt.Println(boxLine(title(` ██████╗ ██████╗  ██████╗  ██████╗  ██████╗ ███╗  ██╗███████╗███████╗ ██████╗`)))
-	fmt.Println(boxLine(title(` ██╔══██╗██╔══██╗██╔═══██╗██╔════╝ ██╔═══██╗████╗ ██║██╔════╝██╔════╝██╔════╝`)))
-	fmt.Println(boxLine(title(` ██║  ██║██████╔╝██║   ██║██║  ███╗██║   ██║██╔██╗██║███████╗█████╗  ██║     `)))
-	fmt.Println(boxLine(title(` ██║  ██║██╔══██╗██║   ██║██║   ██║██║   ██║██║╚██╗██║╚════██║██╔══╝  ██║     `)))
-	fmt.Println(boxLine(title(` ██████╔╝██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝██║ ╚████║███████║███████╗╚██████╗`)))
-	fmt.Println(boxLine(title(` ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝`)))
-	fmt.Println(boxLine(""))
+	// ── DROGONSEC  — large ASCII title (outside boxLine to avoid double-width
+	//    character misalignment; the ╠═══╣ borders above and below act as frame)
+	fmt.Println()
+	fmt.Println("  " + title(` ██████╗ ██████╗  ██████╗  ██████╗  ██████╗ ███╗  ██╗███████╗███████╗ ██████╗`))
+	fmt.Println("  " + title(` ██╔══██╗██╔══██╗██╔═══██╗██╔════╝ ██╔═══██╗████╗ ██║██╔════╝██╔════╝██╔════╝`))
+	fmt.Println("  " + title(` ██║  ██║██████╔╝██║   ██║██║  ███╗██║   ██║██╔██╗██║███████╗█████╗  ██║     `))
+	fmt.Println("  " + title(` ██║  ██║██╔══██╗██║   ██║██║   ██║██║   ██║██║╚██╗██║╚════██║██╔══╝  ██║     `))
+	fmt.Println("  " + title(` ██████╔╝██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝██║ ╚████║███████║███████╗╚██████╗`))
+	fmt.Println("  " + title(` ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝ ╚═════╝`))
+	fmt.Println()
 
-	// ── Security statement (inside frame) ─────────────────────────────────────
-	fmt.Println(boxLine(
-		nMag("◆") + " " + bold("HUNT VULNERABILITIES") + "  " +
-			nMag("◆") + " " + bold("BREAK WALLS") + "  " +
-			nMag("◆") + " " + bold("SECURE CODE") + "  " +
-			nMag("◆")))
-	fmt.Println(boxLine(""))
+	// ── Security statement — centered inside frame ────────────────────────────
+	fmt.Println(midBdr)
+	stmt := nMag("◆") + " " + bold("HUNT VULNERABILITIES") + "  " +
+		nMag("◆") + " " + bold("BREAK WALLS") + "  " +
+		nMag("◆") + " " + bold("SECURE CODE") + "  " +
+		nMag("◆")
+	fmt.Println(boxLine(centerIn(stmt)))
 
 	// ── Bottom box: capabilities + author tagline ─────────────────────────────
 	fmt.Println(midBdr)
