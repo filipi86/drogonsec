@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
        drogonsec scan ./project --format html --output report.html
        drogonsec scan . --severity HIGH
 
-  GitHub: https://github.com/drogonsec/drogonsec`,
+  GitHub: https://github.com/filipi86/drogonsec`,
 		color.New(color.FgHiCyan, color.Bold).Sprint("DragonSec Security Scanner v0.1.0"),
 		color.New(color.FgHiBlack).Sprint("Usage:"),
 	),

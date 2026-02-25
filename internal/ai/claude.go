@@ -141,7 +141,7 @@ Be concise but complete. Focus on practical fixes a developer can implement imme
 func buildPrompt(f analyzer.Finding) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("## Security Vulnerability Found\n\n"))
+	sb.WriteString("## Security Vulnerability Found\n\n")
 	sb.WriteString(fmt.Sprintf("**Vulnerability:** %s\n", f.Title))
 	sb.WriteString(fmt.Sprintf("**Severity:** %s\n", f.Severity))
 	sb.WriteString(fmt.Sprintf("**Language:** %s\n", f.Language))
