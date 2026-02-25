@@ -1,5 +1,5 @@
 # DragonSec Security Scanner - Makefile
-# https://github.com/drogonsec/drogonsec
+# https://github.com/filipi86/drogonsec
 
 BINARY_NAME    := drogonsec
 VERSION        := 0.1.0
