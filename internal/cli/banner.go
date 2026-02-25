@@ -25,20 +25,12 @@ func padTo(s string, w int) string {
 }
 
 // PrintDragonBanner prints the DrogonSec cyberpunk banner.
-// Scene: angular dragon breathing fire at a crumbling wall.
 func PrintDragonBanner() {
 
 	// ── Colour palette ────────────────────────────────────────────────────────
 	nCyan := color.New(color.FgHiCyan, color.Bold).SprintFunc()
 	nMag  := color.New(color.FgHiMagenta, color.Bold).SprintFunc()
 	nYel  := color.New(color.FgHiYellow, color.Bold).SprintFunc()
-	fRed  := color.New(color.FgHiRed, color.Bold).SprintFunc()
-	fOra  := color.New(color.FgYellow, color.Bold).SprintFunc()
-	fYel  := color.New(color.FgHiYellow).SprintFunc()
-	drg   := color.New(color.FgHiCyan, color.Bold).SprintFunc()
-	wll   := color.New(color.FgHiBlack, color.Bold).SprintFunc()
-	wCrk  := color.New(color.FgRed, color.Bold).SprintFunc()
-	wRub  := color.New(color.FgRed).SprintFunc()
 	bold  := color.New(color.FgHiWhite, color.Bold).SprintFunc()
 	dim   := color.New(color.FgHiBlack).SprintFunc()
 	gn    := color.New(color.FgHiGreen, color.Bold).SprintFunc()
@@ -63,86 +55,6 @@ func PrintDragonBanner() {
 		nMag("DRG-0x1") + nCyan(" ▸▸ ") +
 			bold("NEURAL THREAT SCANNER") +
 			dim("  │  SAST · SCA · LEAKS · GIT-HISTORY · IaC")))
-	fmt.Println(midBdr)
-	fmt.Println()
-
-	// ── Dragon · Fire · Broken-Wall scene ────────────────────────────────────
-	//
-	//  The dragon is a profile view (facing right), drawn with ASCII chars:
-	//    horns ^, eyes (o), open jaw >==FIRE==►, wings /\, claws |_|
-	//
-	//  Fire: ▓▓▒▒░░ gradient (red → orange → yellow) pointing ►
-	//  Wall: vertical ║ columns with ═ crossbars; cracks on impact row.
-	//
-	//  Columns: [dragon ~30] [fire ~25] [gap] [wall ~20]
-	//
-
-	// Row 1 ── horns above the head
-	fmt.Println(
-		"          " + drg("^   ^") +
-			"                                         " +
-			wll("╔══════╗  ╔══════╗"))
-
-	// Row 2 ── eyes (immediately readable as a creature face)
-	fmt.Println(
-		"         " + drg("(o) (o)") +
-			"                                        " +
-			wll("║      ║  ║      ║"))
-
-	// Row 3 ── upper head frame / cheekbones
-	fmt.Println(
-		"        " + drg("/|     |\\") +
-			"                                       " +
-			wll("║      ╚══╝      ║"))
-
-	// Row 4 ── MAIN FIRE BREATH  (open jaw → fire → wall breach)
-	fmt.Println(
-		"       " + drg("/ |     | \\") +
-			fRed("═══▓▓▓") + fOra("▒▒▒") + fYel("░░░░░░░░░░░░►") +
-			"   " +
-			wCrk("╠═════════════════╣"))
-
-	// Row 5 ── lower jaw / chin
-	fmt.Println(
-		"       " + drg("\\_|_____|_/") +
-			"                                  " +
-			wCrk("╚════╗      ╔════╝"))
-
-	// Row 6 ── neck / body
-	fmt.Println(
-		"        " + drg("/ /     \\ \\") +
-			"                                 " +
-			wRub("░    ╚══════╝    ░"))
-
-	// Row 7 ── wings spread
-	fmt.Println(
-		"       " + drg("/ /   /\\  \\ \\") +
-			"                               " +
-			wRub("░░░░░░░░░░░░░░░░░"))
-
-	// Row 8 ── wing tips + breach label
-	fmt.Println(
-		"      " + drg("/ /   /  \\  \\ \\") +
-			"                              " +
-			wCrk("[ BREACH  DETECTED ]"))
-
-	// Row 9 ── lower body / tail
-	fmt.Println(
-		"     " + drg("/_/   /    \\  \\_\\"))
-
-	// Row 10 ── belly
-	fmt.Println(
-		"            " + drg("/________\\"))
-
-	// Row 11 ── legs / claws
-	fmt.Println(
-		"           " + drg("| |      | |"))
-
-	// Row 12 ── ground contact
-	fmt.Println(
-		"           " + drg("|_|      |_|"))
-
-	fmt.Println()
 	fmt.Println(midBdr)
 	fmt.Println()
 
