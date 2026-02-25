@@ -1,0 +1,480 @@
+package reporter
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
+	"time"
+
+	"github.com/drogonsec/drogonsec/internal/analyzer"
+	"github.com/drogonsec/drogonsec/internal/config"
+	"github.com/fatih/color"
+)
+
+// Reporter defines the interface for report generation
+type Reporter interface {
+	Write(result *analyzer.ScanResult, w io.Writer) error
+}
+
+// New creates a reporter for the given format
+func New(format string) (Reporter, error) {
+	switch strings.ToLower(format) {
+	case "text", "":
+		return &TextReporter{}, nil
+	case "json":
+		return &JSONReporter{}, nil
+	case "sarif":
+		return &SARIFReporter{}, nil
+	case "html":
+		return &HTMLReporter{}, nil
+	default:
+		return nil, fmt.Errorf("unknown format: %s (use: text, json, sarif, html)", format)
+	}
+}
+
+// ============= TEXT REPORTER =============
+
+type TextReporter struct{}
+
+func (r *TextReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
+	bold := color.New(color.Bold).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+	cyan := color.New(color.FgCyan).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+
+	severityColor := func(s config.Severity) string {
+		switch s {
+		case config.SeverityCritical:
+			return color.New(color.FgRed, color.Bold).Sprint(s)
+		case config.SeverityHigh:
+			return red(string(s))
+		case config.SeverityMedium:
+			return yellow(string(s))
+		case config.SeverityLow:
+			return blue(string(s))
+		default:
+			return string(s)
+		}
+	}
+
+	// SAST Findings
+	if len(result.SASTFindings) > 0 {
+		fmt.Fprintf(w, "\n%s\n", bold("═══ SAST FINDINGS ═══════════════════════════════════════"))
+		for i, f := range result.SASTFindings {
+			fmt.Fprintf(w, "\n  %s [%s] %s\n", cyan(fmt.Sprintf("#%d", i+1)), severityColor(f.Severity), bold(f.Title))
+			fmt.Fprintf(w, "  File     : %s:%d\n", f.File, f.Line)
+			fmt.Fprintf(w, "  Rule     : %s\n", f.RuleID)
+			fmt.Fprintf(w, "  OWASP    : %s\n", f.OWASP)
+			fmt.Fprintf(w, "  CWE      : %s  CVSS: %.1f\n", f.CWE, f.CVSS)
+			fmt.Fprintf(w, "  Desc     : %s\n", f.Description)
+			if f.Code != "" {
+				fmt.Fprintf(w, "  Code     :\n")
+				for _, line := range strings.Split(f.Code, "\n") {
+					fmt.Fprintf(w, "             %s\n", line)
+				}
+			}
+			fmt.Fprintf(w, "  Fix      : %s\n", green(f.Remediation))
+			if len(f.References) > 0 {
+				fmt.Fprintf(w, "  Refs     : %s\n", f.References[0])
+			}
+			if f.AIRemediation != "" {
+				fmt.Fprintf(w, "\n  %s\n", bold("🤖 AI Remediation:"))
+				fmt.Fprintf(w, "  %s\n", f.AIRemediation)
+			}
+		}
+	}
+
+	// Leak Findings
+	if len(result.LeakFindings) > 0 {
+		fmt.Fprintf(w, "\n%s\n", bold("═══ LEAK FINDINGS ═══════════════════════════════════════"))
+		for i, f := range result.LeakFindings {
+			fmt.Fprintf(w, "\n  %s [%s] %s\n", cyan(fmt.Sprintf("#%d", i+1)), severityColor(f.Severity), bold(f.Type))
+			fmt.Fprintf(w, "  File     : %s:%d\n", f.File, f.Line)
+			fmt.Fprintf(w, "  Match    : %s\n", red(f.Match))
+			fmt.Fprintf(w, "  Rule     : %s\n", f.RuleID)
+			fmt.Fprintf(w, "  Desc     : %s\n", f.Description)
+			if f.InGitHistory {
+				fmt.Fprintf(w, "  History  : Found in commit %s\n", f.CommitHash)
+			}
+			if f.AIRemediation != "" {
+				fmt.Fprintf(w, "\n  %s\n", bold("🤖 AI Remediation:"))
+				fmt.Fprintf(w, "  %s\n", f.AIRemediation)
+			}
+		}
+	}
+
+	// SCA Findings
+	if len(result.SCAFindings) > 0 {
+		fmt.Fprintf(w, "\n%s\n", bold("═══ SCA FINDINGS ════════════════════════════════════════"))
+		for i, f := range result.SCAFindings {
+			fmt.Fprintf(w, "\n  %s [%s] %s %s\n",
+				cyan(fmt.Sprintf("#%d", i+1)),
+				severityColor(f.Severity),
+				bold(f.PackageName),
+				yellow(f.PackageVersion),
+			)
+			fmt.Fprintf(w, "  CVE      : %s  CVSS: %.1f\n", f.CVE, f.CVSS)
+			fmt.Fprintf(w, "  Manifest : %s\n", f.ManifestFile)
+			fmt.Fprintf(w, "  Fixed in : %s\n", green(f.FixedVersion))
+			fmt.Fprintf(w, "  Desc     : %s\n", f.Description)
+			fmt.Fprintf(w, "  Advisory : %s\n", f.Advisory)
+		}
+	}
+
+	return nil
+}
+
+// ============= JSON REPORTER =============
+
+type JSONReporter struct{}
+
+type jsonOutput struct {
+	Version      string                `json:"version"`
+	ScanTime     string                `json:"scan_time"`
+	Duration     string                `json:"duration"`
+	Target       string                `json:"target"`
+	Stats        analyzer.ScanStats    `json:"stats"`
+	SASTFindings []analyzer.Finding    `json:"sast_findings"`
+	SCAFindings  []analyzer.SCAFinding `json:"sca_findings"`
+	LeakFindings []analyzer.LeakFinding `json:"leak_findings"`
+}
+
+func (r *JSONReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
+	out := jsonOutput{
+		Version:      result.Version,
+		ScanTime:     result.ScanTime.Format(time.RFC3339),
+		Duration:     result.Duration.String(),
+		Target:       result.TargetPath,
+		Stats:        result.Stats,
+		SASTFindings: result.SASTFindings,
+		SCAFindings:  result.SCAFindings,
+		LeakFindings: result.LeakFindings,
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(out)
+}
+
+// ============= SARIF REPORTER =============
+// SARIF 2.1.0 - Standard format for GitHub, Azure DevOps, GitLab integration
+
+type SARIFReporter struct{}
+
+type sarifOutput struct {
+	Schema  string     `json:"$schema"`
+	Version string     `json:"version"`
+	Runs    []sarifRun `json:"runs"`
+}
+
+type sarifRun struct {
+	Tool    sarifTool     `json:"tool"`
+	Results []sarifResult `json:"results"`
+}
+
+type sarifTool struct {
+	Driver sarifDriver `json:"driver"`
+}
+
+type sarifDriver struct {
+	Name            string      `json:"name"`
+	Version         string      `json:"version"`
+	InformationURI  string      `json:"informationUri"`
+	Rules           []sarifRule `json:"rules"`
+}
+
+type sarifRule struct {
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	ShortDescription sarifMessage           `json:"shortDescription"`
+	FullDescription  sarifMessage           `json:"fullDescription"`
+	Properties       map[string]interface{} `json:"properties"`
+}
+
+type sarifResult struct {
+	RuleID    string          `json:"ruleId"`
+	Level     string          `json:"level"`
+	Message   sarifMessage    `json:"message"`
+	Locations []sarifLocation `json:"locations"`
+}
+
+type sarifMessage struct {
+	Text string `json:"text"`
+}
+
+type sarifLocation struct {
+	PhysicalLocation sarifPhysicalLocation `json:"physicalLocation"`
+}
+
+type sarifPhysicalLocation struct {
+	ArtifactLocation sarifArtifactLocation `json:"artifactLocation"`
+	Region           sarifRegion           `json:"region"`
+}
+
+type sarifArtifactLocation struct {
+	URI string `json:"uri"`
+}
+
+type sarifRegion struct {
+	StartLine int `json:"startLine"`
+	StartColumn int `json:"startColumn,omitempty"`
+}
+
+func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
+	var rules []sarifRule
+	var results []sarifResult
+
+	ruleSet := make(map[string]bool)
+
+	// Add SAST findings
+	for _, f := range result.SASTFindings {
+		if !ruleSet[f.RuleID] {
+			rules = append(rules, sarifRule{
+				ID:               f.RuleID,
+				Name:             strings.ReplaceAll(f.Title, " ", ""),
+				ShortDescription: sarifMessage{Text: f.Title},
+				FullDescription:  sarifMessage{Text: f.Description},
+				Properties: map[string]interface{}{
+					"severity":     string(f.Severity),
+					"owasp":        string(f.OWASP),
+					"cwe":          f.CWE,
+					"cvss":         f.CVSS,
+				},
+			})
+			ruleSet[f.RuleID] = true
+		}
+
+		results = append(results, sarifResult{
+			RuleID: f.RuleID,
+			Level:  sarifLevel(f.Severity),
+			Message: sarifMessage{Text: fmt.Sprintf("%s - %s", f.Title, f.Remediation)},
+			Locations: []sarifLocation{{
+				PhysicalLocation: sarifPhysicalLocation{
+					ArtifactLocation: sarifArtifactLocation{URI: f.File},
+					Region:           sarifRegion{StartLine: f.Line, StartColumn: f.Column},
+				},
+			}},
+		})
+	}
+
+	// Add Leak findings
+	for _, f := range result.LeakFindings {
+		ruleID := f.RuleID
+		if !ruleSet[ruleID] {
+			rules = append(rules, sarifRule{
+				ID:               ruleID,
+				Name:             strings.ReplaceAll(f.Type, " ", ""),
+				ShortDescription: sarifMessage{Text: f.Type},
+				FullDescription:  sarifMessage{Text: f.Description},
+				Properties: map[string]interface{}{
+					"severity": string(f.Severity),
+				},
+			})
+			ruleSet[ruleID] = true
+		}
+
+		results = append(results, sarifResult{
+			RuleID:  ruleID,
+			Level:   sarifLevel(f.Severity),
+			Message: sarifMessage{Text: fmt.Sprintf("Secret detected: %s", f.Type)},
+			Locations: []sarifLocation{{
+				PhysicalLocation: sarifPhysicalLocation{
+					ArtifactLocation: sarifArtifactLocation{URI: f.File},
+					Region:           sarifRegion{StartLine: f.Line},
+				},
+			}},
+		})
+	}
+
+	sarif := sarifOutput{
+		Schema:  "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
+		Version: "2.1.0",
+		Runs: []sarifRun{{
+			Tool: sarifTool{Driver: sarifDriver{
+				Name:           "DragonSec Security Scanner",
+				Version:        result.Version,
+				InformationURI: "https://github.com/drogonsec/drogonsec",
+				Rules:          rules,
+			}},
+			Results: results,
+		}},
+	}
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(sarif)
+}
+
+func sarifLevel(s config.Severity) string {
+	switch s {
+	case config.SeverityCritical, config.SeverityHigh:
+		return "error"
+	case config.SeverityMedium:
+		return "warning"
+	default:
+		return "note"
+	}
+}
+
+// ============= HTML REPORTER =============
+
+type HTMLReporter struct{}
+
+func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
+	severityBadge := func(s config.Severity) string {
+		colors := map[config.Severity]string{
+			config.SeverityCritical: "#dc2626",
+			config.SeverityHigh:     "#ea580c",
+			config.SeverityMedium:   "#ca8a04",
+			config.SeverityLow:      "#2563eb",
+			config.SeverityInfo:     "#6b7280",
+		}
+		c := colors[s]
+		if c == "" {
+			c = "#6b7280"
+		}
+		return fmt.Sprintf(`<span class="badge" style="background:%s">%s</span>`, c, s)
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DragonSec Security Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+  .header { background: linear-gradient(135deg, #1e293b 0%%, #0f172a 100%%); padding: 2rem; border-bottom: 1px solid #334155; }
+  .header h1 { font-size: 2rem; color: #38bdf8; margin-bottom: 0.5rem; }
+  .header p { color: #94a3b8; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 2rem 0; }
+  .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; text-align: center; }
+  .stat-card .number { font-size: 2.5rem; font-weight: bold; }
+  .stat-card .label { color: #94a3b8; font-size: 0.875rem; margin-top: 0.25rem; }
+  .critical { color: #dc2626; } .high { color: #ea580c; } .medium { color: #ca8a04; }
+  .low { color: #2563eb; } .info { color: #6b7280; }
+  .section { margin: 2rem 0; }
+  .section h2 { color: #38bdf8; font-size: 1.25rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; }
+  .finding { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .finding-title { font-weight: 600; font-size: 1.1rem; }
+  .badge { padding: 0.25rem 0.75rem; border-radius: 9999px; color: white; font-size: 0.75rem; font-weight: 600; }
+  .finding-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+  .meta-item { font-size: 0.875rem; color: #94a3b8; }
+  .meta-item strong { color: #e2e8f0; }
+  .code-block { background: #0f172a; border: 1px solid #334155; border-radius: 0.375rem; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.8rem; overflow-x: auto; white-space: pre; margin: 0.75rem 0; }
+  .remediation { background: #064e3b; border: 1px solid #065f46; border-radius: 0.375rem; padding: 1rem; margin-top: 0.75rem; font-size: 0.875rem; }
+  .remediation::before { content: "✓ Fix: "; font-weight: bold; color: #34d399; }
+  .ai-remediation { background: #1e1b4b; border: 1px solid #4338ca; border-radius: 0.375rem; padding: 1rem; margin-top: 0.75rem; font-size: 0.875rem; }
+  .ai-remediation strong { color: #818cf8; }
+  .ai-remediation p { margin: 0.5rem 0 0; color: #c7d2fe; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="max-width:1200px;margin:0 auto">
+    <h1>🛡️ DragonSec Security Report</h1>
+    <p>Target: %s | Scanned: %s | Duration: %s</p>
+  </div>
+</div>
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="number">%d</div><div class="label">Total Findings</div></div>
+    <div class="stat-card"><div class="number critical">%d</div><div class="label">Critical</div></div>
+    <div class="stat-card"><div class="number high">%d</div><div class="label">High</div></div>
+    <div class="stat-card"><div class="number medium">%d</div><div class="label">Medium</div></div>
+    <div class="stat-card"><div class="number low">%d</div><div class="label">Low</div></div>
+    <div class="stat-card"><div class="number">%d</div><div class="label">Files Scanned</div></div>
+  </div>`,
+		result.TargetPath,
+		result.ScanTime.Format("2006-01-02 15:04:05"),
+		result.Duration.Round(time.Millisecond),
+		result.Stats.TotalFindings,
+		result.Stats.CriticalCount,
+		result.Stats.HighCount,
+		result.Stats.MediumCount,
+		result.Stats.LowCount,
+		result.FilesScanned,
+	)
+
+	// SAST Findings section
+	if len(result.SASTFindings) > 0 {
+		html += fmt.Sprintf(`<div class="section"><h2>🔍 SAST Findings (%d)</h2>`, len(result.SASTFindings))
+		for _, f := range result.SASTFindings {
+			aiSection := ""
+		if f.AIRemediation != "" {
+			aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, f.AIRemediation)
+		}
+		html += fmt.Sprintf(`
+<div class="finding">
+  <div class="finding-header">%s<span class="finding-title">%s</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> %s:%d</div>
+    <div class="meta-item"><strong>Rule:</strong> %s</div>
+    <div class="meta-item"><strong>OWASP:</strong> %s</div>
+    <div class="meta-item"><strong>CWE:</strong> %s | CVSS: %.1f</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">%s</p>
+  <div class="remediation">%s</div>
+  %s
+</div>`, severityBadge(f.Severity), f.Title, f.File, f.Line, f.RuleID, f.OWASP, f.CWE, f.CVSS, f.Description, f.Remediation, aiSection)
+		}
+		html += `</div>`
+	}
+
+	// Leak Findings section
+	if len(result.LeakFindings) > 0 {
+		html += fmt.Sprintf(`<div class="section"><h2>🔑 Leak Findings (%d)</h2>`, len(result.LeakFindings))
+		for _, f := range result.LeakFindings {
+			aiSection := ""
+			if f.AIRemediation != "" {
+				aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, f.AIRemediation)
+			}
+			html += fmt.Sprintf(`
+<div class="finding">
+  <div class="finding-header">%s<span class="finding-title">%s</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> %s:%d</div>
+    <div class="meta-item"><strong>Rule:</strong> %s</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">%s</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">%s</p>
+  %s
+</div>`, severityBadge(f.Severity), f.Type, f.File, f.Line, f.RuleID, f.Match, f.Description, aiSection)
+		}
+		html += `</div>`
+	}
+
+	// SCA Findings section
+	if len(result.SCAFindings) > 0 {
+		html += fmt.Sprintf(`<div class="section"><h2>📦 SCA Findings (%d)</h2>`, len(result.SCAFindings))
+		for _, f := range result.SCAFindings {
+			html += fmt.Sprintf(`
+<div class="finding">
+  <div class="finding-header">%s<span class="finding-title">%s %s</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> %s | CVSS: %.1f</div>
+    <div class="meta-item"><strong>Manifest:</strong> %s</div>
+    <div class="meta-item"><strong>Fixed in:</strong> %s</div>
+    <div class="meta-item"><strong>Ecosystem:</strong> %s</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">%s</p>
+  <div class="remediation">Upgrade to version %s or higher. See: <a href="%s" style="color:#38bdf8">%s</a></div>
+</div>`, severityBadge(f.Severity), f.PackageName, f.PackageVersion, f.CVE, f.CVSS, f.ManifestFile, f.FixedVersion, f.Ecosystem, f.Description, f.FixedVersion, f.Advisory, f.CVE)
+		}
+		html += `</div>`
+	}
+
+	html += `</div>
+<div style="text-align:center;padding:2rem;color:#475569;font-size:0.875rem">
+  Generated by <strong>DragonSec Security Scanner</strong> | Aligned with OWASP Top 10:2025
+</div>
+</body></html>`
+
+	_, err := fmt.Fprint(w, html)
+	return err
+}

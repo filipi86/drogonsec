@@ -1,0 +1,39 @@
+rules:
+  - id: GO-YAML-001
+    language: go
+    title: "MD5 Usage — Weak Hashing Algorithm"
+    description: "MD5 is cryptographically broken and should not be used for security-sensitive operations (passwords, signatures, integrity checks)."
+    pattern: "md5\\.New\\(\\)|md5\\.Sum\\("
+    severity: HIGH
+    owasp: A04:2025
+    cwe: CWE-327
+    cvss: 7.4
+    remediation: "Replace MD5 with SHA-256 (crypto/sha256) or SHA-3. For password hashing, use bcrypt, scrypt, or argon2."
+    references:
+      - "https://pkg.go.dev/crypto/sha256"
+
+  - id: GO-YAML-002
+    language: go
+    title: "SHA-1 Usage — Weak Hashing Algorithm"
+    description: "SHA-1 is deprecated for security use due to collision vulnerabilities demonstrated since 2017."
+    pattern: "sha1\\.New\\(\\)|sha1\\.Sum\\("
+    severity: MEDIUM
+    owasp: A04:2025
+    cwe: CWE-327
+    cvss: 5.9
+    remediation: "Use SHA-256 or SHA-512 from the crypto/sha256 or crypto/sha512 packages."
+    references:
+      - "https://shattered.io/"
+
+  - id: GO-YAML-003
+    language: go
+    title: "math/rand Instead of crypto/rand"
+    description: "math/rand produces predictable pseudo-random numbers. Using it for security tokens, session IDs, or nonces weakens security."
+    pattern: "rand\\.New\\(rand\\.NewSource\\(|math/rand"
+    severity: HIGH
+    owasp: A02:2025
+    cwe: CWE-338
+    cvss: 7.5
+    remediation: "Use crypto/rand for security-sensitive random number generation."
+    references:
+      - "https://pkg.go.dev/crypto/rand"

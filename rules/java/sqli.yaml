@@ -1,0 +1,39 @@
+rules:
+  - id: JAVA-YAML-001
+    language: java
+    title: "String Concatenation in SQL Query"
+    description: "Building SQL queries by string concatenation is a classic SQL injection vector."
+    pattern: "(?i)(\"SELECT|\"INSERT|\"UPDATE|\"DELETE|\"FROM|\"WHERE)[^\"]*\"\\s*\\+"
+    severity: CRITICAL
+    owasp: A05:2025
+    cwe: CWE-89
+    cvss: 9.8
+    remediation: "Use PreparedStatement with parameterized queries. Never concatenate user input into SQL strings."
+    references:
+      - "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
+
+  - id: JAVA-YAML-002
+    language: java
+    title: "Weak Random — java.util.Random"
+    description: "java.util.Random uses a predictable seed and must not be used for security-sensitive operations."
+    pattern: "new\\s+Random\\(\\)"
+    severity: MEDIUM
+    owasp: A02:2025
+    cwe: CWE-338
+    cvss: 5.9
+    remediation: "Use java.security.SecureRandom for security-sensitive random number generation."
+    references:
+      - "https://docs.oracle.com/en/java/docs/java/security/SecureRandom.html"
+
+  - id: JAVA-YAML-003
+    language: java
+    title: "XXE — XMLInputFactory Without Feature Disabling"
+    description: "XML parsers without XXE protections can be exploited to read local files or perform SSRF."
+    pattern: "XMLInputFactory\\.newInstance\\(\\)"
+    severity: HIGH
+    owasp: A05:2025
+    cwe: CWE-611
+    cvss: 7.5
+    remediation: "Disable external entity processing: factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false)"
+    references:
+      - "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html"

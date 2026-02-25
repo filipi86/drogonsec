@@ -1,0 +1,71 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+drogonsec
+
+# Build output
+dist/
+
+# Test files
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets - NEVER commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+config.local.yaml
+secrets.yaml
+
+# Reports (generated files - add to .gitignore if you don't want them in VCS)
+drogonsec-report.html
+drogonsec.sarif
+*.sarif
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+.pytest_cache/
+
+# Coverage
+.coverage
+
+# Temporary
+tmp/
+temp/

@@ -1,0 +1,39 @@
+rules:
+  - id: JS-YAML-001
+    language: javascript
+    title: "innerHTML Assignment — DOM-based XSS"
+    description: "Assigning user-controlled data directly to innerHTML enables DOM-based Cross-Site Scripting (XSS)."
+    pattern: "\\.innerHTML\\s*="
+    severity: HIGH
+    owasp: A05:2025
+    cwe: CWE-79
+    cvss: 7.4
+    remediation: "Use textContent or innerText for plain text. For HTML content, sanitize with DOMPurify before setting innerHTML."
+    references:
+      - "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html"
+
+  - id: JS-YAML-002
+    language: javascript
+    title: "eval() — Arbitrary Code Execution"
+    description: "eval() with user-supplied input can execute arbitrary JavaScript code, leading to XSS or RCE in Node.js contexts."
+    pattern: "\\beval\\s*\\("
+    severity: HIGH
+    owasp: A05:2025
+    cwe: CWE-78
+    cvss: 8.1
+    remediation: "Avoid eval() entirely. Use JSON.parse() for JSON data, or refactor to eliminate dynamic code evaluation."
+    references:
+      - "https://eslint.org/docs/rules/no-eval"
+
+  - id: JS-YAML-003
+    language: javascript
+    title: "document.write() — XSS Vector"
+    description: "document.write() with user input is a classic XSS vector, especially when the page uses UTF-7 or if the input includes script tags."
+    pattern: "document\\.write\\("
+    severity: MEDIUM
+    owasp: A05:2025
+    cwe: CWE-79
+    cvss: 6.1
+    remediation: "Replace document.write() with DOM manipulation methods like createElement() and appendChild()."
+    references:
+      - "https://developer.mozilla.org/en-US/docs/Web/API/Document/write"

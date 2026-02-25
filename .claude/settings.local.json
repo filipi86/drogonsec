@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(brew list:*)",
+      "Bash(docker --version:*)",
+      "Bash(/usr/local/bin/go version:*)",
+      "Bash(/usr/local/bin/go mod download:*)",
+      "Bash(/usr/local/bin/go build:*)",
+      "Bash(/usr/local/bin/go mod tidy:*)",
+      "Bash(/usr/local/bin/go test:*)",
+      "Bash(/Users/thor/Documents/THOR/DrogonSec/drogonsec/bin/drogonsec:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(./bin/drogonsec scan:*)",
+      "Bash(gh auth:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

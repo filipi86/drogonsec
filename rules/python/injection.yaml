@@ -1,0 +1,40 @@
+rules:
+  - id: PY-YAML-001
+    language: python
+    title: "Pickle Deserialization — Arbitrary Code Execution"
+    description: "pickle.loads() on untrusted data allows arbitrary code execution. An attacker can craft a payload that runs any OS command."
+    pattern: "pickle\\.loads?\\("
+    severity: CRITICAL
+    owasp: A08:2025
+    cwe: CWE-502
+    cvss: 9.8
+    remediation: "Replace pickle with json.loads() or another safe serialization format. If pickle is required, sign the payload with hmac before deserializing."
+    references:
+      - "https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"
+      - "https://cwe.mitre.org/data/definitions/502.html"
+
+  - id: PY-YAML-002
+    language: python
+    title: "yaml.load() Without Loader — Code Execution Risk"
+    description: "yaml.load() with untrusted input and no explicit Loader can execute arbitrary Python code via !!python/object tags."
+    pattern: "yaml\\.load\\([^,)]+\\)"
+    severity: HIGH
+    owasp: A08:2025
+    cwe: CWE-502
+    cvss: 8.1
+    remediation: "Use yaml.safe_load() instead of yaml.load(), or pass Loader=yaml.SafeLoader explicitly."
+    references:
+      - "https://pyyaml.org/wiki/PyYAMLDocumentation"
+
+  - id: PY-YAML-003
+    language: python
+    title: "Hardcoded Cryptographic Key"
+    description: "Hardcoded secret key detected. Cryptographic keys should never be committed to source code."
+    pattern: "(?i)SECRET_KEY\\s*=\\s*['\"][a-zA-Z0-9!@#$%^&*()_+=-]{16,}['\"]"
+    severity: HIGH
+    owasp: A04:2025
+    cwe: CWE-321
+    cvss: 7.5
+    remediation: "Load SECRET_KEY from environment variables or a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault)."
+    references:
+      - "https://docs.djangoproject.com/en/stable/ref/settings/#std:setting-SECRET_KEY"

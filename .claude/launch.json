@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "build",
+      "runtimeExecutable": "/usr/local/bin/go",
+      "runtimeArgs": ["build", "-o", "./bin/drogonsec", "./cmd/drogonsec/"],
+      "port": 0
+    },
+    {
+      "name": "test",
+      "runtimeExecutable": "/usr/local/bin/go",
+      "runtimeArgs": ["test", "./...", "-v", "-count=1"],
+      "port": 0
+    },
+    {
+      "name": "scan-self",
+      "runtimeExecutable": "./bin/drogonsec",
+      "runtimeArgs": ["scan", ".", "--format", "text", "--no-sca"],
+      "port": 0
+    },
+    {
+      "name": "scan-report",
+      "runtimeExecutable": "./bin/drogonsec",
+      "runtimeArgs": ["scan", ".", "--format", "html", "--output", "drogonsec-report.html", "--no-sca"],
+      "port": 0
+    },
+    {
+      "name": "report-server",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "/tmp"],
+      "port": 8765
+    }
+  ]
+}

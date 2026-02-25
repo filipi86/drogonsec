@@ -1,0 +1,89 @@
+# DragonSec Security Scanner - Configuration File
+# Place this file at .drogonsec.yaml in your project root or ~/.drogonsec.yaml
+
+# Scan configuration
+scan:
+  # Minimum severity to report: LOW, MEDIUM, HIGH, CRITICAL
+  min_severity: LOW
+
+  # Number of parallel workers for analysis
+  workers: 4
+
+  # Enable git history scanning for secrets
+  git_history: false
+
+  # Paths to ignore during scanning (in addition to defaults)
+  ignore_paths:
+    - ".git"
+    - "node_modules"
+    - "vendor"
+    - "dist"
+    - "build"
+    - "target"
+    - "__pycache__"
+    - ".gradle"
+    - ".m2"
+    - "coverage"
+    - "*.min.js"
+
+  # Specific languages to scan (empty = auto-detect all)
+  languages: []
+
+# Analysis engines
+engines:
+  # Static Application Security Testing
+  sast:
+    enabled: true
+
+  # Software Composition Analysis (dependency scanning)
+  sca:
+    enabled: true
+
+  # Secret and credential leak detection
+  leaks:
+    enabled: true
+    # Minimum Shannon entropy for generic secret detection
+    min_entropy: 3.5
+
+# Output configuration
+output:
+  # Format: text, json, sarif, html
+  format: text
+  # Output file path (empty = stdout)
+  file: ""
+  # Show code snippets in text output
+  show_code: true
+
+# Claude AI Integration
+ai:
+  # Enable AI-powered remediation suggestions
+  enabled: false
+  # API key - prefer ANTHROPIC_API_KEY environment variable
+  api_key: ""
+  # Only enrich HIGH and CRITICAL findings (reduces API calls)
+  high_severity_only: true
+
+# Custom rules (additional to built-in rules)
+custom_rules:
+  # Example:
+  # - id: CUSTOM-001
+  #   language: python
+  #   pattern: "my_dangerous_function"
+  #   severity: HIGH
+  #   title: "Dangerous Function Usage"
+  #   description: "This function is not allowed in production code"
+  #   remediation: "Use safe_function() instead"
+
+# False positive suppression
+suppressions:
+  # Example:
+  # - rule_id: PY-003
+  #   file: "tests/fixtures/test_credentials.py"
+  #   reason: "Test fixture - not real credentials"
+
+# Fail conditions (exit code 1 when true)
+fail_on:
+  critical: true
+  high: true
+  medium: false
+  low: false
