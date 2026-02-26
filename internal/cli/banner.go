@@ -52,7 +52,7 @@ func PrintDragonBanner() {
 	bold  := color.New(color.FgHiWhite, color.Bold).SprintFunc()
 	dim   := color.New(color.FgHiBlack).SprintFunc()
 	gn    := color.New(color.FgHiGreen, color.Bold).SprintFunc()
-	title := color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	title := color.New(color.FgHiYellow, color.Bold).SprintFunc() // Gold Cyberpunk
 
 	// ── Frame helpers (W = inner width between ╔ and ╗) ──────────────────────
 	// The widest title line contains 54 × █ (each rendered as 2 cols) + 24
@@ -82,7 +82,7 @@ func PrintDragonBanner() {
 	fmt.Println()
 	fmt.Println(topBdr)
 	fmt.Println(boxLine(
-		nMag("DRG-0x1") + nCyan(" ▸▸ ") +
+		nCyan("DRG-0x1") + nCyan(" ▸▸ ") +
 			bold("NEURAL THREAT SCANNER") +
 			dim("  │  SAST · SCA · LEAKS · GIT-HISTORY · IaC")))
 	fmt.Println(midBdr)
@@ -111,12 +111,12 @@ func PrintDragonBanner() {
 			gn("LEAKS") + dim(" │ ") +
 			gn("GIT-HISTORY") + dim(" │ ") +
 			gn("IaC") + dim(" │ ") +
-			nMag("Remediation AI [Enterprise]")))
+			nCyan("Remediation AI [Enterprise]")))
 	fmt.Println(boxLine(
 		nCyan("►") + " " +
 			nYel("Created by Filipi Pires") +
 			dim(" │ v0.1.0 │ OWASP 2025 │ ") +
-			nMag("Maintained by: CROSS-INTEL") +
+			nCyan("Maintained by: CROSS-INTEL") +
 			" " + nCyan("◄")))
 	fmt.Println(botBdr)
 	fmt.Println()
