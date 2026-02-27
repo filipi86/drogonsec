@@ -5,10 +5,9 @@
 [![OWASP Top 10:2025](https://img.shields.io/badge/OWASP-Top%2010%3A2025-orange.svg)](https://owasp.org/Top10/2025/)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org)
 
-<img width="1110" height="517" alt="image" src="https://github.com/user-attachments/assets/cd2908f5-a0ea-433d-ba23-67b6ef1ed236" />
+<img width="1099" height="404" alt="image" src="https://github.com/user-attachments/assets/4f0c9136-cff9-4122-bbcc-e23eed71c48f" />
 
-
-> An open-source, comprehensive security scanner combining SAST, SCA, and secret detection aligned with OWASP Top 10:2025 — created by Filipi Pires for intelligent remediation.
+> An open-source, comprehensive security scanner combining SAST, SCA, and secret detection aligned with OWASP Top 10:2025 — created for intelligent remediation.
 
 ---
 
@@ -256,6 +255,6 @@ Apache License 2.0 — See [LICENSE](LICENSE)
 
 ## Credits
 
-Inspired by [Horusec](https://github.com/ZupIT/horusec) (ZupIT). DragonSec is its modern, actively maintained successor with enhanced capabilities.
+Inspired by [Horusec](https://github.com/ZupIT/horusec) (ZupIT). DragonSec is its modern, actively maintained, and updated with enhanced capabilities.
 
 Built with: Go, Cobra, Viper, go-git.
