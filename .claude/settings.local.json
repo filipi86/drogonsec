@@ -34,7 +34,16 @@
       "Bash(xxd:*)",
       "Bash(script -q /dev/null /tmp/drogonsec --help)",
       "Bash(python3:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go test:*)",
+      "Bash(go run:*)",
+      "Bash(/tmp/drogonsec-test:*)",
+      "Bash(done)",
+      "Bash(go install:*)",
+      "Bash(drogonsec --version:*)",
+      "Bash(drogonsec:*)"
     ]
   }
 }

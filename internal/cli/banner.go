@@ -43,13 +43,13 @@ func padTo(s string, w int) string {
 func PrintDragonBanner() {
 
 	// ── Colour palette ────────────────────────────────────────────────────────
-	nCyan := color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	nCyan := color.New(color.FgCyan, color.Bold).SprintFunc()
 	nMag  := color.New(color.FgHiMagenta, color.Bold).SprintFunc()
 	nYel  := color.New(color.FgHiYellow, color.Bold).SprintFunc()
 	bold  := color.New(color.FgHiWhite, color.Bold).SprintFunc()
 	dim   := color.New(color.FgHiBlack).SprintFunc()
 	gn    := color.New(color.FgHiGreen, color.Bold).SprintFunc()
-	title := color.New(color.FgYellow, color.Bold).SprintFunc() // Dark Gold Cyberpunk
+	title := color.New(color.FgHiYellow, color.Bold).SprintFunc() // Gold Cyberpunk
 
 	// ── Frame helpers (W = inner width between ╔ and ╗) ──────────────────────
 	// W=80 accommodates the DROGONSEC title lines (≤78 runes wide)

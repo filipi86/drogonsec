@@ -12,10 +12,10 @@ func javascriptRules() []Rule {
 			Title:    "Code injection via eval()",
 			Description: "eval() executes arbitrary JavaScript code. User-controlled input in eval() " +
 				"enables complete application compromise.",
-			Pattern:  mustCompile(`\beval\s*\(`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-95",
-			CVSS:     9.8,
+			Pattern: mustCompile(`\beval\s*\(`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-95",
+			CVSS:    9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/95.html",
 			},
@@ -30,10 +30,10 @@ func javascriptRules() []Rule {
 			Title:    "DOM-based XSS via innerHTML",
 			Description: "Assigning user-controlled content to innerHTML parses and executes HTML, " +
 				"enabling Cross-Site Scripting attacks.",
-			Pattern:  mustCompile(`\.innerHTML\s*=`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-79",
-			CVSS:     7.4,
+			Pattern: mustCompile(`\.innerHTML\s*=`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-79",
+			CVSS:    7.4,
 			References: []string{
 				"https://owasp.org/Top10/2025/A05_2025-Injection/",
 				"https://cwe.mitre.org/data/definitions/79.html",
@@ -49,10 +49,10 @@ func javascriptRules() []Rule {
 			Title:    "DOM-based XSS via document.write()",
 			Description: "document.write() with user-controlled content renders arbitrary HTML/JavaScript, " +
 				"enabling XSS attacks.",
-			Pattern:  mustCompile(`document\.write\s*\(`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-79",
-			CVSS:     7.4,
+			Pattern: mustCompile(`document\.write\s*\(`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-79",
+			CVSS:    7.4,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/79.html",
 			},
@@ -67,10 +67,10 @@ func javascriptRules() []Rule {
 			Title:    "Hardcoded API key or secret",
 			Description: "Hardcoded secrets in JavaScript/TypeScript source code are exposed to all " +
 				"users who can access the source (especially frontend code).",
-			Pattern:  mustCompile(`(?i)(apiKey|api_key|secret|password|token|passwd)\s*[:=]\s*["'][^"']{8,}["']`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-259",
-			CVSS:     8.0,
+			Pattern: mustCompile(`(?i)(apiKey|api_key|secret|password|token|passwd)\s*[:=]\s*["'][^"']{8,}["']`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-259",
+			CVSS:    8.0,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/259.html",
 			},
@@ -85,10 +85,10 @@ func javascriptRules() []Rule {
 			Title:    "Prototype pollution vulnerability",
 			Description: "Merging user-controlled objects without protection can modify Object.prototype, " +
 				"affecting all objects in the application.",
-			Pattern:  mustCompile(`(__proto__|constructor\.prototype)`),
-			OWASP:    config.OWASP_A02_SecurityMisconfiguration,
-			CWE:      "CWE-1321",
-			CVSS:     8.1,
+			Pattern: mustCompile(`(__proto__|constructor\.prototype)`),
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
+			CWE:     "CWE-1321",
+			CVSS:    8.1,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/1321.html",
 			},
@@ -97,15 +97,15 @@ func javascriptRules() []Rule {
 
 		// A05:2025 - SQL injection (Node.js)
 		{
-			ID:       "JS-006",
-			Language: config.LangJavaScript,
-			Severity: config.SeverityHigh,
-			Title:    "SQL Injection in Node.js",
+			ID:          "JS-006",
+			Language:    config.LangJavaScript,
+			Severity:    config.SeverityHigh,
+			Title:       "SQL Injection in Node.js",
 			Description: "String concatenation in SQL queries allows SQL Injection attacks.",
-			Pattern:  mustCompile(`(?i)(query|execute)\s*\(\s*["'\x60].*\+\s*(req\.|user|input|param)`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-89",
-			CVSS:     9.8,
+			Pattern:     mustCompile(`(?i)(query|execute)\s*\(\s*["'\x60].*\+\s*(req\.|user|input|param)`),
+			OWASP:       config.OWASP_A05_Injection,
+			CWE:         "CWE-89",
+			CVSS:        9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/89.html",
 			},
@@ -120,10 +120,10 @@ func javascriptRules() []Rule {
 			Title:    "CORS wildcard origin (Express)",
 			Description: "Allowing all origins via CORS wildcard exposes your API to cross-origin requests " +
 				"from any website, potentially enabling CSRF-like attacks.",
-			Pattern:  mustCompile(`cors\s*\(\s*\{\s*origin\s*:\s*["']\*["']`),
-			OWASP:    config.OWASP_A02_SecurityMisconfiguration,
-			CWE:      "CWE-942",
-			CVSS:     6.5,
+			Pattern: mustCompile(`cors\s*\(\s*\{\s*origin\s*:\s*["']\*["']`),
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
+			CWE:     "CWE-942",
+			CVSS:    6.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/942.html",
 			},
@@ -138,10 +138,10 @@ func javascriptRules() []Rule {
 			Title:    "JWT signature verification disabled",
 			Description: "Setting algorithms: ['none'] or ignoreExpiration: true in JWT allows " +
 				"attackers to forge authentication tokens.",
-			Pattern:  mustCompile(`(?i)(ignoreExpiration\s*:\s*true|algorithms\s*:\s*\[.*none)`),
-			OWASP:    config.OWASP_A07_AuthenticationFailures,
-			CWE:      "CWE-347",
-			CVSS:     9.8,
+			Pattern: mustCompile(`(?i)(ignoreExpiration\s*:\s*true|algorithms\s*:\s*\[.*none)`),
+			OWASP:   config.OWASP_A07_AuthenticationFailures,
+			CWE:     "CWE-347",
+			CVSS:    9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/347.html",
 			},
@@ -156,10 +156,10 @@ func javascriptRules() []Rule {
 			Title:    "Insecure deserialization (node-serialize)",
 			Description: "node-serialize's unserialize() can execute arbitrary code if the serialized " +
 				"data contains a JavaScript function (IIFE).",
-			Pattern:  mustCompile(`(?i)(unserialize|deserialize)\s*\(`),
-			OWASP:    config.OWASP_A08_SoftwareDataIntegrityFailures,
-			CWE:      "CWE-502",
-			CVSS:     9.8,
+			Pattern: mustCompile(`(?i)(unserialize|deserialize)\s*\(`),
+			OWASP:   config.OWASP_A08_SoftwareDataIntegrityFailures,
+			CWE:     "CWE-502",
+			CVSS:    9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/502.html",
 			},
@@ -174,10 +174,10 @@ func javascriptRules() []Rule {
 			Title:    "Insecure random (Math.random()) for security",
 			Description: "Math.random() is not cryptographically secure. Using it for tokens, " +
 				"session IDs, or OTPs is predictable and exploitable.",
-			Pattern:  mustCompile(`Math\.random\s*\(\s*\)`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-338",
-			CVSS:     5.9,
+			Pattern: mustCompile(`Math\.random\s*\(\s*\)`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-338",
+			CVSS:    5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/338.html",
 			},
@@ -192,10 +192,10 @@ func javascriptRules() []Rule {
 			Title:    "Security headers not configured (Helmet.js missing)",
 			Description: "Express applications without Helmet.js are missing critical security headers " +
 				"like CSP, HSTS, X-Frame-Options, etc.",
-			Pattern:  mustCompile(`(?i)express\s*\(\s*\)`),
-			OWASP:    config.OWASP_A02_SecurityMisconfiguration,
-			CWE:      "CWE-693",
-			CVSS:     5.3,
+			Pattern: mustCompile(`(?i)express\s*\(\s*\)`),
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
+			CWE:     "CWE-693",
+			CVSS:    5.3,
 			References: []string{
 				"https://helmetjs.github.io/",
 				"https://cwe.mitre.org/data/definitions/693.html",
@@ -211,10 +211,10 @@ func javascriptRules() []Rule {
 			Title:    "Path traversal via user-controlled file path",
 			Description: "Reading or writing files with user-controlled paths allows attackers to " +
 				"access files outside the intended directory.",
-			Pattern:  mustCompile(`(?i)(fs\.(readFile|writeFile|readFileSync|createReadStream))\s*\(.*req\.(params|query|body)`),
-			OWASP:    config.OWASP_A01_BrokenAccessControl,
-			CWE:      "CWE-22",
-			CVSS:     8.6,
+			Pattern: mustCompile(`(?i)(fs\.(readFile|writeFile|readFileSync|createReadStream))\s*\(.*req\.(params|query|body)`),
+			OWASP:   config.OWASP_A01_BrokenAccessControl,
+			CWE:     "CWE-22",
+			CVSS:    8.6,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/22.html",
 			},
@@ -229,10 +229,10 @@ func javascriptRules() []Rule {
 			Title:    "Potential sensitive data in console.log",
 			Description: "Logging passwords, tokens or sensitive data to the console creates exposure " +
 				"risk through log aggregation systems.",
-			Pattern:  mustCompile(`(?i)console\.(log|error|info|debug)\s*\(.*(?:password|token|secret|credential)`),
-			OWASP:    config.OWASP_A09_SecurityLoggingAlertingFailures,
-			CWE:      "CWE-532",
-			CVSS:     5.5,
+			Pattern: mustCompile(`(?i)console\.(log|error|info|debug)\s*\(.*(?:password|token|secret|credential)`),
+			OWASP:   config.OWASP_A09_SecurityLoggingAlertingFailures,
+			CWE:     "CWE-532",
+			CVSS:    5.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/532.html",
 			},
@@ -247,10 +247,10 @@ func javascriptRules() []Rule {
 			Title:    "Unhandled promise rejection",
 			Description: "Promise chains without .catch() or async functions without try/catch can " +
 				"cause unexpected application behavior and hide security errors.",
-			Pattern:  mustCompile(`\.then\s*\([^)]+\)\s*(?!\.catch)`),
-			OWASP:    config.OWASP_A10_MishandlingExceptionalConditions,
-			CWE:      "CWE-390",
-			CVSS:     3.7,
+			Pattern: mustCompile(`\.then\s*\([^)]+\)\s*(?!\.catch)`),
+			OWASP:   config.OWASP_A10_MishandlingExceptionalConditions,
+			CWE:     "CWE-390",
+			CVSS:    3.7,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/390.html",
 			},
@@ -265,10 +265,10 @@ func javascriptRules() []Rule {
 			Title:    "Potential ReDoS - catastrophic backtracking regex",
 			Description: "Regular expressions with nested quantifiers can cause exponential backtracking, " +
 				"enabling Denial of Service with crafted input.",
-			Pattern:  mustCompile(`new RegExp\s*\(`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-1333",
-			CVSS:     5.9,
+			Pattern: mustCompile(`new RegExp\s*\(`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-1333",
+			CVSS:    5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/1333.html",
 				"https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS",
@@ -284,10 +284,10 @@ func javascriptRules() []Rule {
 			Title:    "Missing CSRF protection",
 			Description: "API endpoints that accept state-changing requests without CSRF tokens are " +
 				"vulnerable to Cross-Site Request Forgery attacks.",
-			Pattern:  mustCompile(`(?i)app\.(post|put|delete|patch)\s*\(`),
-			OWASP:    config.OWASP_A01_BrokenAccessControl,
-			CWE:      "CWE-352",
-			CVSS:     6.5,
+			Pattern: mustCompile(`(?i)app\.(post|put|delete|patch)\s*\(`),
+			OWASP:   config.OWASP_A01_BrokenAccessControl,
+			CWE:     "CWE-352",
+			CVSS:    6.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/352.html",
 				"https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DragonSec Security Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; }
+  .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 2rem; border-bottom: 1px solid #334155; }
+  .header h1 { font-size: 2rem; color: #38bdf8; margin-bottom: 0.5rem; }
+  .header p { color: #94a3b8; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 2rem 0; }
+  .stat-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; text-align: center; }
+  .stat-card .number { font-size: 2.5rem; font-weight: bold; }
+  .stat-card .label { color: #94a3b8; font-size: 0.875rem; margin-top: 0.25rem; }
+  .critical { color: #dc2626; } .high { color: #ea580c; } .medium { color: #ca8a04; }
+  .low { color: #2563eb; } .info { color: #6b7280; }
+  .section { margin: 2rem 0; }
+  .section h2 { color: #38bdf8; font-size: 1.25rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; }
+  .finding { background: #1e293b; border: 1px solid #334155; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem; }
+  .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .finding-title { font-weight: 600; font-size: 1.1rem; }
+  .badge { padding: 0.25rem 0.75rem; border-radius: 9999px; color: white; font-size: 0.75rem; font-weight: 600; }
+  .finding-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+  .meta-item { font-size: 0.875rem; color: #94a3b8; }
+  .meta-item strong { color: #e2e8f0; }
+  .code-block { background: #0f172a; border: 1px solid #334155; border-radius: 0.375rem; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.8rem; overflow-x: auto; white-space: pre; margin: 0.75rem 0; }
+  .remediation { background: #064e3b; border: 1px solid #065f46; border-radius: 0.375rem; padding: 1rem; margin-top: 0.75rem; font-size: 0.875rem; }
+  .remediation::before { content: "✓ Fix: "; font-weight: bold; color: #34d399; }
+  .ai-remediation { background: #1e1b4b; border: 1px solid #4338ca; border-radius: 0.375rem; padding: 1rem; margin-top: 0.75rem; font-size: 0.875rem; }
+  .ai-remediation strong { color: #818cf8; }
+  .ai-remediation p { margin: 0.5rem 0 0; color: #c7d2fe; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="max-width:1200px;margin:0 auto">
+    <h1>🛡️ DragonSec Security Report</h1>
+    <p>Target: /Users/Thor/Documents/THOR/DrogonSec/drogonsec | Scanned: 2026-02-26 15:37:43 | Duration: 743ms</p>
+  </div>
+</div>
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="number">57</div><div class="label">Total Findings</div></div>
+    <div class="stat-card"><div class="number critical">20</div><div class="label">Critical</div></div>
+    <div class="stat-card"><div class="number high">34</div><div class="label">High</div></div>
+    <div class="stat-card"><div class="number medium">3</div><div class="label">Medium</div></div>
+    <div class="stat-card"><div class="number low">0</div><div class="label">Low</div></div>
+    <div class="stat-card"><div class="number">32</div><div class="label">Files Scanned</div></div>
+  </div><div class="section"><h2>🔍 SAST Findings (15)</h2>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">Missing Content Security Policy (CSP)</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/drogonsec-report.html:2</div>
+    <div class="meta-item"><strong>Rule:</strong> HTML-002</div>
+    <div class="meta-item"><strong>OWASP:</strong> A02:2025 - Security Misconfiguration</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-693 | CVSS: 6.1</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Pages without CSP headers are more vulnerable to XSS attacks.</p>
+  <div class="remediation">Add Content-Security-Policy meta tag or HTTP header: default-src 'self'; script-src 'self'</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">TODO/FIXME security comment</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/drogonsec-report.html:126</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-003</div>
+    <div class="meta-item"><strong>OWASP:</strong> A06:2025 - Insecure Design</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-546 | CVSS: 5.5</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Security-related TODO/FIXME comments indicate known unresolved vulnerabilities.</p>
+  <div class="remediation">Address all security-related TODOs before production deployment. Track issues in your issue tracker.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">TLS InsecureSkipVerify enabled</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/engine_test.go:168</div>
+    <div class="meta-item"><strong>Rule:</strong> GO-005</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-295 | CVSS: 7.4</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Disabling TLS verification opens connections to MITM attacks.</p>
+  <div class="remediation">Remove InsecureSkipVerify. Configure proper TLS with x509.CertPool for custom CAs.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:30</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ca8a04">MEDIUM</span><span class="finding-title">Unsafe use of math/rand for security</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:63</div>
+    <div class="meta-item"><strong>Rule:</strong> GO-007</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-338 | CVSS: 5.9</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">math/rand is not cryptographically secure.</p>
+  <div class="remediation">Use crypto/rand for security-sensitive randomness.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ca8a04">MEDIUM</span><span class="finding-title">Unsafe use of math/rand for security</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:64</div>
+    <div class="meta-item"><strong>Rule:</strong> GO-007</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-338 | CVSS: 5.9</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">math/rand is not cryptographically secure.</p>
+  <div class="remediation">Use crypto/rand for security-sensitive randomness.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ca8a04">MEDIUM</span><span class="finding-title">Unsafe use of math/rand for security</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:65</div>
+    <div class="meta-item"><strong>Rule:</strong> GO-007</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-338 | CVSS: 5.9</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">math/rand is not cryptographically secure.</p>
+  <div class="remediation">Use crypto/rand for security-sensitive randomness.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Certificate private key in source</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:420</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-002</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 8.0</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">PFX/P12 certificate private keys in source code expose authentication material.</p>
+  <div class="remediation">Use certificate stores or secrets managers. Never commit certificates to VCS.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">TODO/FIXME security comment</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:427</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-003</div>
+    <div class="meta-item"><strong>OWASP:</strong> A06:2025 - Insecure Design</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-546 | CVSS: 5.5</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Security-related TODO/FIXME comments indicate known unresolved vulnerabilities.</p>
+  <div class="remediation">Address all security-related TODOs before production deployment. Track issues in your issue tracker.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:397</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:405</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:413</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:421</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Private key in source file</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:429</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-001</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 9.8</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA, EC, or SSH private keys embedded in source code expose cryptographic material.</p>
+  <div class="remediation">Remove private keys from source code. Rotate all exposed keys immediately. Use a secrets manager.</div>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Certificate private key in source</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:439</div>
+    <div class="meta-item"><strong>Rule:</strong> GEN-002</div>
+    <div class="meta-item"><strong>OWASP:</strong> A04:2025 - Cryptographic Failures</div>
+    <div class="meta-item"><strong>CWE:</strong> CWE-321 | CVSS: 8.0</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">PFX/P12 certificate private keys in source code expose authentication material.</p>
+  <div class="remediation">Use certificate stores or secrets managers. Never commit certificates to VCS.</div>
+  
+</div></div><div class="section"><h2>🔑 Leak Findings (17)</h2>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">Hardcoded Password</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/engine_test.go:94</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-120</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">PASS...123" [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Hardcoded password detected. Should be stored in a secrets manager.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">Hardcoded API Key (Generic)</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/engine_test.go:95</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-121</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">API_...key" [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Generic API key pattern detected in source code.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">PKCS12 Certificate</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_other.go:420</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-090</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Certificate detected in source code.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">RSA Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:397</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-080</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA private key detected in source code.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">EC Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:405</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-081</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">EC (Elliptic Curve) private key detected.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">OpenSSH Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:413</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-082</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">OpenSSH private key detected.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">PGP Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:421</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-083</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">PGP private key block detected.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">DSA Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:429</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-084</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">DSA private key detected.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">PKCS12 Certificate</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector.go:439</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-090</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Certificate detected in source code.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">AWS Access Key ID</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:20</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-001</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">AKIA...MPLE [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">AWS Access Key ID detected. This grants programmatic access to AWS services.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">GitHub Personal Access Token</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:25</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-020</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">ghp_...CDEF [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">GitHub Personal Access Token (classic) detected.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">RSA Private Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:30</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-080</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">----...---- [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">RSA private key detected in source code.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">Stripe Secret Key</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:35</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-030</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">sk_l...mnop [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">Stripe secret API key detected. Can be used to process payments.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">JSON Web Token (JWT)</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:40</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-100</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">eyJh...sw5c [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">JWT token detected. May expose user session or contain sensitive claims.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">AWS Access Key ID</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:91</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-001</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">AKIA...MPLE [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">AWS Access Key ID detected. This grants programmatic access to AWS services.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">AWS Access Key ID</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:104</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-001</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">AKIA...MPLE [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">AWS Access Key ID detected. This grants programmatic access to AWS services.</p>
+  
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#dc2626">CRITICAL</span><span class="finding-title">AWS Access Key ID</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>File:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/internal/leaks/detector_test.go:107</div>
+    <div class="meta-item"><strong>Rule:</strong> LEAK-001</div>
+    <div class="meta-item"><strong>Match:</strong> <code style="color:#f87171">AKIA...MPLE [REDACTED]</code></div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem">AWS Access Key ID detected. This grants programmatic access to AWS services.</p>
+  
+</div></div><div class="section"><h2>📦 SCA Findings (25)</h2>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-37cx-329c-33x3 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-37cx-329c-33x3" style="color:#38bdf8">GHSA-37cx-329c-33x3</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-r9px-m959-cxf4 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-r9px-m959-cxf4" style="color:#38bdf8">GHSA-r9px-m959-cxf4</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-v725-9546-7q7m | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-v725-9546-7q7m" style="color:#38bdf8">GHSA-v725-9546-7q7m</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3367 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3367" style="color:#38bdf8">GO-2025-3367</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3368 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3368" style="color:#38bdf8">GO-2025-3368</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/go-git/go-git/v5 v5.12.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2026-4473 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2026-4473" style="color:#38bdf8">GO-2026-4473</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/cloudflare/circl v1.3.7</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-2x5j-vhc8-9cwm | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-2x5j-vhc8-9cwm" style="color:#38bdf8">GHSA-2x5j-vhc8-9cwm</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/cloudflare/circl v1.3.7</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-q9hv-hpm4-hj6x | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-q9hv-hpm4-hj6x" style="color:#38bdf8">GHSA-q9hv-hpm4-hj6x</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">github.com/cloudflare/circl v1.3.7</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3754 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3754" style="color:#38bdf8">GO-2025-3754</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-f6x5-jh6r-wrfv | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-f6x5-jh6r-wrfv" style="color:#38bdf8">GHSA-f6x5-jh6r-wrfv</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-hcg3-q754-cr77 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-hcg3-q754-cr77" style="color:#38bdf8">GHSA-hcg3-q754-cr77</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-j5w8-q4qc-rx2x | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-j5w8-q4qc-rx2x" style="color:#38bdf8">GHSA-j5w8-q4qc-rx2x</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-v778-237x-gjrc | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-v778-237x-gjrc" style="color:#38bdf8">GHSA-v778-237x-gjrc</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2024-3321 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2024-3321" style="color:#38bdf8">GO-2024-3321</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3487 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3487" style="color:#38bdf8">GO-2025-3487</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-4116 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-4116" style="color:#38bdf8">GO-2025-4116</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-4134 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-4134" style="color:#38bdf8">GO-2025-4134</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/crypto v0.21.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-4135 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-4135" style="color:#38bdf8">GO-2025-4135</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-qxp5-gwg8-xv66 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-qxp5-gwg8-xv66" style="color:#38bdf8">GHSA-qxp5-gwg8-xv66</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GHSA-vvgc-356p-c3xw | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GHSA-vvgc-356p-c3xw" style="color:#38bdf8">GHSA-vvgc-356p-c3xw</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2024-3333 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2024-3333" style="color:#38bdf8">GO-2024-3333</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3503 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3503" style="color:#38bdf8">GO-2025-3503</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2025-3595 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2025-3595" style="color:#38bdf8">GO-2025-3595</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2026-4440 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2026-4440" style="color:#38bdf8">GO-2026-4440</a></div>
+</div>
+<div class="finding">
+  <div class="finding-header"><span class="badge" style="background:#ea580c">HIGH</span><span class="finding-title">golang.org/x/net v0.23.0</span></div>
+  <div class="finding-meta">
+    <div class="meta-item"><strong>CVE:</strong> GO-2026-4441 | CVSS: 0.0</div>
+    <div class="meta-item"><strong>Manifest:</strong> /Users/Thor/Documents/THOR/DrogonSec/drogonsec/go.mod</div>
+    <div class="meta-item"><strong>Fixed in:</strong> </div>
+    <div class="meta-item"><strong>Ecosystem:</strong> go</div>
+  </div>
+  <p style="color:#94a3b8;font-size:0.875rem"></p>
+  <div class="remediation">Upgrade to version  or higher. See: <a href="https://osv.dev/vulnerability/GO-2026-4441" style="color:#38bdf8">GO-2026-4441</a></div>
+</div></div></div>
+<div style="text-align:center;padding:2rem;color:#475569;font-size:0.875rem">
+  Generated by <strong>DragonSec Security Scanner</strong> | Aligned with OWASP Top 10:2025
+</div>
+</body></html>

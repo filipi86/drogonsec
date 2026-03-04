@@ -12,10 +12,10 @@ func javaRules() []Rule {
 			Title:    "SQL Injection via string concatenation",
 			Description: "Building SQL queries with string concatenation allows attackers to manipulate " +
 				"database queries and access unauthorized data.",
-			Pattern:  mustCompile(`(?i)(Statement|createStatement|prepareStatement)\s*.*\+\s*(request|user|input|param)`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-89",
-			CVSS:     9.8,
+			Pattern: mustCompile(`(?i)(Statement|createStatement|prepareStatement)\s*.*\+\s*(request|user|input|param)`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-89",
+			CVSS:    9.8,
 			References: []string{
 				"https://owasp.org/Top10/2025/A05_2025-Injection/",
 				"https://cwe.mitre.org/data/definitions/89.html",
@@ -31,10 +31,10 @@ func javaRules() []Rule {
 			Title:    "Command Injection via Runtime.exec()",
 			Description: "Executing system commands with user-controlled input enables arbitrary " +
 				"command execution on the server.",
-			Pattern:  mustCompile(`Runtime\.getRuntime\(\)\.exec\s*\(`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-78",
-			CVSS:     9.8,
+			Pattern: mustCompile(`Runtime\.getRuntime\(\)\.exec\s*\(`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-78",
+			CVSS:    9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/78.html",
 			},
@@ -49,10 +49,10 @@ func javaRules() []Rule {
 			Title:    "Hardcoded password or secret",
 			Description: "Credentials hardcoded in Java source code are easily discovered and cannot " +
 				"be rotated without a code deployment.",
-			Pattern:  mustCompile(`(?i)(password|passwd|secret|apiKey|api_key)\s*=\s*"[^"]{4,}"`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-259",
-			CVSS:     8.0,
+			Pattern: mustCompile(`(?i)(password|passwd|secret|apiKey|api_key)\s*=\s*"[^"]{4,}"`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-259",
+			CVSS:    8.0,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/259.html",
 			},
@@ -67,10 +67,10 @@ func javaRules() []Rule {
 			Title:    "Use of MD5 weak hash algorithm",
 			Description: "MD5 is cryptographically broken. Collisions can be computed efficiently, " +
 				"making it unsuitable for security-sensitive operations.",
-			Pattern:  mustCompile(`MessageDigest\.getInstance\s*\(\s*"MD5"`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-327",
-			CVSS:     5.9,
+			Pattern: mustCompile(`MessageDigest\.getInstance\s*\(\s*"MD5"`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-327",
+			CVSS:    5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/327.html",
 			},
@@ -85,10 +85,10 @@ func javaRules() []Rule {
 			Title:    "Use of SHA1 weak hash algorithm",
 			Description: "SHA-1 is vulnerable to collision attacks and should not be used for " +
 				"security-critical operations.",
-			Pattern:  mustCompile(`MessageDigest\.getInstance\s*\(\s*"SHA-1"`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-327",
-			CVSS:     5.9,
+			Pattern: mustCompile(`MessageDigest\.getInstance\s*\(\s*"SHA-1"`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-327",
+			CVSS:    5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/327.html",
 			},
@@ -103,10 +103,10 @@ func javaRules() []Rule {
 			Title:    "Insecure Java deserialization (ObjectInputStream)",
 			Description: "Java's native deserialization has been a source of critical RCE vulnerabilities. " +
 				"Deserializing untrusted data with ObjectInputStream is extremely dangerous.",
-			Pattern:  mustCompile(`ObjectInputStream\s*\(`),
-			OWASP:    config.OWASP_A08_SoftwareDataIntegrityFailures,
-			CWE:      "CWE-502",
-			CVSS:     9.8,
+			Pattern: mustCompile(`ObjectInputStream\s*\(`),
+			OWASP:   config.OWASP_A08_SoftwareDataIntegrityFailures,
+			CWE:     "CWE-502",
+			CVSS:    9.8,
 			References: []string{
 				"https://owasp.org/Top10/2025/A08_2025-Software_and_Data_Integrity_Failures/",
 				"https://cwe.mitre.org/data/definitions/502.html",
@@ -122,10 +122,10 @@ func javaRules() []Rule {
 			Title:    "XML External Entity (XXE) vulnerability",
 			Description: "XML parsers with external entity processing enabled allow attackers to " +
 				"read local files, perform SSRF, or cause DoS.",
-			Pattern:  mustCompile(`(?i)(DocumentBuilderFactory|SAXParserFactory|XMLInputFactory)\.newInstance\s*\(\s*\)`),
-			OWASP:    config.OWASP_A02_SecurityMisconfiguration,
-			CWE:      "CWE-611",
-			CVSS:     8.6,
+			Pattern: mustCompile(`(?i)(DocumentBuilderFactory|SAXParserFactory|XMLInputFactory)\.newInstance\s*\(\s*\)`),
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
+			CWE:     "CWE-611",
+			CVSS:    8.6,
 			References: []string{
 				"https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
 				"https://cwe.mitre.org/data/definitions/611.html",
@@ -141,10 +141,10 @@ func javaRules() []Rule {
 			Title:    "Path traversal vulnerability",
 			Description: "Constructing file paths with unvalidated user input allows attackers to " +
 				"read arbitrary files from the filesystem.",
-			Pattern:  mustCompile(`new\s+File\s*\(.*\+\s*(request|user|param|input)`),
-			OWASP:    config.OWASP_A01_BrokenAccessControl,
-			CWE:      "CWE-22",
-			CVSS:     8.6,
+			Pattern: mustCompile(`new\s+File\s*\(.*\+\s*(request|user|param|input)`),
+			OWASP:   config.OWASP_A01_BrokenAccessControl,
+			CWE:     "CWE-22",
+			CVSS:    8.6,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/22.html",
 			},
@@ -159,10 +159,10 @@ func javaRules() []Rule {
 			Title:    "Insecure password storage (not using BCrypt/Argon2)",
 			Description: "Storing passwords without a proper password hashing algorithm (bcrypt, argon2, scrypt) " +
 				"makes them vulnerable to offline cracking attacks.",
-			Pattern:  mustCompile(`(?i)(password|passwd)\.getBytes\s*\(`),
-			OWASP:    config.OWASP_A07_AuthenticationFailures,
-			CWE:      "CWE-916",
-			CVSS:     8.1,
+			Pattern: mustCompile(`(?i)(password|passwd)\.getBytes\s*\(`),
+			OWASP:   config.OWASP_A07_AuthenticationFailures,
+			CWE:     "CWE-916",
+			CVSS:    8.1,
 			References: []string{
 				"https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
 				"https://cwe.mitre.org/data/definitions/916.html",
@@ -178,10 +178,10 @@ func javaRules() []Rule {
 			Title:    "LDAP Injection vulnerability",
 			Description: "Constructing LDAP queries with unsanitized user input allows attackers to " +
 				"bypass authentication or exfiltrate directory data.",
-			Pattern:  mustCompile(`(?i)(DirContext|search|NamingEnumeration).*\+\s*(user|input|param|request)`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-90",
-			CVSS:     8.8,
+			Pattern: mustCompile(`(?i)(DirContext|search|NamingEnumeration).*\+\s*(user|input|param|request)`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-90",
+			CVSS:    8.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/90.html",
 			},
@@ -196,10 +196,10 @@ func javaRules() []Rule {
 			Title:    "SSL/TLS certificate verification disabled",
 			Description: "Disabling SSL certificate validation exposes all HTTPS connections to " +
 				"man-in-the-middle attacks.",
-			Pattern:  mustCompile(`(?i)(TrustAllCerts|AllowAllHostnameVerifier|ALLOW_ALL_HOSTNAME_VERIFIER|NullHostnameVerifier)`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-295",
-			CVSS:     7.4,
+			Pattern: mustCompile(`(?i)(TrustAllCerts|AllowAllHostnameVerifier|ALLOW_ALL_HOSTNAME_VERIFIER|NullHostnameVerifier)`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-295",
+			CVSS:    7.4,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/295.html",
 			},
@@ -214,10 +214,10 @@ func javaRules() []Rule {
 			Title:    "Potential Cross-Site Scripting (XSS)",
 			Description: "Writing user-controlled data directly to HTTP response without encoding " +
 				"enables Cross-Site Scripting attacks.",
-			Pattern:  mustCompile(`(?i)response\.getWriter\(\)\.write\s*\(.*request\.(getParameter|getAttribute)`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-79",
-			CVSS:     7.4,
+			Pattern: mustCompile(`(?i)response\.getWriter\(\)\.write\s*\(.*request\.(getParameter|getAttribute)`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-79",
+			CVSS:    7.4,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/79.html",
 				"https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
@@ -233,10 +233,10 @@ func javaRules() []Rule {
 			Title:    "Log injection / Log forging",
 			Description: "Logging user-controlled input without sanitization allows log injection attacks, " +
 				"potentially hiding malicious activity or poisoning log analysis.",
-			Pattern:  mustCompile(`(?i)(log|logger)\.(debug|info|warn|error|trace)\s*\(.*request\.(getParameter|getHeader)`),
-			OWASP:    config.OWASP_A09_SecurityLoggingAlertingFailures,
-			CWE:      "CWE-117",
-			CVSS:     5.3,
+			Pattern: mustCompile(`(?i)(log|logger)\.(debug|info|warn|error|trace)\s*\(.*request\.(getParameter|getHeader)`),
+			OWASP:   config.OWASP_A09_SecurityLoggingAlertingFailures,
+			CWE:     "CWE-117",
+			CVSS:    5.3,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/117.html",
 			},
@@ -251,10 +251,10 @@ func javaRules() []Rule {
 			Title:    "Spring Actuator endpoints exposed",
 			Description: "Exposing all Spring Actuator endpoints without authentication gives " +
 				"attackers access to sensitive application internals.",
-			Pattern:  mustCompile(`(?i)management\.endpoints\.web\.exposure\.include\s*=\s*\*`),
-			OWASP:    config.OWASP_A02_SecurityMisconfiguration,
-			CWE:      "CWE-548",
-			CVSS:     7.5,
+			Pattern: mustCompile(`(?i)management\.endpoints\.web\.exposure\.include\s*=\s*\*`),
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
+			CWE:     "CWE-548",
+			CVSS:    7.5,
 			References: []string{
 				"https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html",
 				"https://cwe.mitre.org/data/definitions/548.html",
@@ -270,10 +270,10 @@ func javaRules() []Rule {
 			Title:    "Empty catch block suppresses exceptions",
 			Description: "Catching and ignoring exceptions hides errors that may have security " +
 				"implications, making incident response impossible.",
-			Pattern:  mustCompile(`catch\s*\([^)]+\)\s*\{\s*\}`),
-			OWASP:    config.OWASP_A10_MishandlingExceptionalConditions,
-			CWE:      "CWE-390",
-			CVSS:     3.7,
+			Pattern: mustCompile(`catch\s*\([^)]+\)\s*\{\s*\}`),
+			OWASP:   config.OWASP_A10_MishandlingExceptionalConditions,
+			CWE:     "CWE-390",
+			CVSS:    3.7,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/390.html",
 			},
@@ -288,10 +288,10 @@ func javaRules() []Rule {
 			Title:    "Use of weak DES/3DES encryption algorithm",
 			Description: "DES and 3DES are obsolete encryption algorithms vulnerable to brute force " +
 				"and meet-in-the-middle attacks.",
-			Pattern:  mustCompile(`Cipher\.getInstance\s*\(\s*"(DES|DESede|3DES)`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-327",
-			CVSS:     7.5,
+			Pattern: mustCompile(`Cipher\.getInstance\s*\(\s*"(DES|DESede|3DES)`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-327",
+			CVSS:    7.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/327.html",
 			},
@@ -306,10 +306,10 @@ func javaRules() []Rule {
 			Title:    "Use of AES in ECB mode (insecure)",
 			Description: "AES/ECB mode is deterministic and does not provide semantic security. " +
 				"It reveals patterns in encrypted data.",
-			Pattern:  mustCompile(`Cipher\.getInstance\s*\(\s*"AES/ECB`),
-			OWASP:    config.OWASP_A04_CryptographicFailures,
-			CWE:      "CWE-327",
-			CVSS:     7.5,
+			Pattern: mustCompile(`Cipher\.getInstance\s*\(\s*"AES/ECB`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-327",
+			CVSS:    7.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/327.html",
 			},
@@ -324,10 +324,10 @@ func javaRules() []Rule {
 			Title:    "Open redirect vulnerability",
 			Description: "Redirecting to URLs from user input without validation enables phishing attacks " +
 				"by using your trusted domain to redirect to malicious sites.",
-			Pattern:  mustCompile(`(?i)response\.sendRedirect\s*\(.*request\.(getParameter|getAttribute)`),
-			OWASP:    config.OWASP_A01_BrokenAccessControl,
-			CWE:      "CWE-601",
-			CVSS:     6.1,
+			Pattern: mustCompile(`(?i)response\.sendRedirect\s*\(.*request\.(getParameter|getAttribute)`),
+			OWASP:   config.OWASP_A01_BrokenAccessControl,
+			CWE:     "CWE-601",
+			CVSS:    6.1,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/601.html",
 			},
@@ -342,10 +342,10 @@ func javaRules() []Rule {
 			Title:    "Insecure cookie configuration (missing HttpOnly/Secure)",
 			Description: "Session cookies without HttpOnly flag can be accessed via JavaScript (XSS risk). " +
 				"Cookies without Secure flag are transmitted over HTTP.",
-			Pattern:  mustCompile(`new\s+Cookie\s*\(`),
-			OWASP:    config.OWASP_A07_AuthenticationFailures,
-			CWE:      "CWE-614",
-			CVSS:     5.9,
+			Pattern: mustCompile(`new\s+Cookie\s*\(`),
+			OWASP:   config.OWASP_A07_AuthenticationFailures,
+			CWE:     "CWE-614",
+			CVSS:    5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/614.html",
 			},
@@ -360,10 +360,10 @@ func javaRules() []Rule {
 			Title:    "XPath Injection vulnerability",
 			Description: "Building XPath expressions with user input allows attackers to bypass " +
 				"authentication or extract arbitrary XML data.",
-			Pattern:  mustCompile(`(?i)(xpath\.evaluate|compile\s*\().*\+\s*(user|input|param|request)`),
-			OWASP:    config.OWASP_A05_Injection,
-			CWE:      "CWE-643",
-			CVSS:     8.8,
+			Pattern: mustCompile(`(?i)(xpath\.evaluate|compile\s*\().*\+\s*(user|input|param|request)`),
+			OWASP:   config.OWASP_A05_Injection,
+			CWE:     "CWE-643",
+			CVSS:    8.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/643.html",
 			},

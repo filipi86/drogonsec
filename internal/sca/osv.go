@@ -19,15 +19,15 @@ const (
 
 // OSV ecosystem mapping from our ecosystem names to OSV ecosystem names
 var osvEcosystemMap = map[string]string{
-	"npm":       "npm",
-	"pip":       "PyPI",
-	"maven":     "Maven",
-	"go":        "Go",
-	"composer":  "Packagist",
-	"rubygems":  "RubyGems",
-	"pub":       "Pub",
-	"cargo":     "crates.io",
-	"nuget":     "NuGet",
+	"npm":      "npm",
+	"pip":      "PyPI",
+	"maven":    "Maven",
+	"go":       "Go",
+	"composer": "Packagist",
+	"rubygems": "RubyGems",
+	"pub":      "Pub",
+	"cargo":    "crates.io",
+	"nuget":    "NuGet",
 }
 
 // ---- OSV API Request Types ----
@@ -57,10 +57,10 @@ type osvQueryResult struct {
 }
 
 type osvVuln struct {
-	ID       string     `json:"id"`
-	Aliases  []string   `json:"aliases"`
-	Summary  string     `json:"summary"`
-	Details  string     `json:"details"`
+	ID       string        `json:"id"`
+	Aliases  []string      `json:"aliases"`
+	Summary  string        `json:"summary"`
+	Details  string        `json:"details"`
 	Severity []osvSeverity `json:"severity"`
 	Affected []osvAffected `json:"affected"`
 }
@@ -71,9 +71,9 @@ type osvSeverity struct {
 }
 
 type osvAffected struct {
-	Package osvPackage `json:"package"`
-	Ranges  []osvRange `json:"ranges"`
-	Versions []string  `json:"versions"`
+	Package  osvPackage `json:"package"`
+	Ranges   []osvRange `json:"ranges"`
+	Versions []string   `json:"versions"`
 }
 
 type osvRange struct {
@@ -82,8 +82,8 @@ type osvRange struct {
 }
 
 type osvEvent struct {
-	Introduced string `json:"introduced,omitempty"`
-	Fixed      string `json:"fixed,omitempty"`
+	Introduced   string `json:"introduced,omitempty"`
+	Fixed        string `json:"fixed,omitempty"`
 	LastAffected string `json:"last_affected,omitempty"`
 }
 

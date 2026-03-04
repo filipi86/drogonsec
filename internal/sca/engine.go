@@ -229,8 +229,8 @@ func (e *Engine) checkKnownVulnerabilities(deps []Dependency) []Finding {
 // PackageJSONParser parses Node.js package.json files
 type PackageJSONParser struct{}
 
-func (p *PackageJSONParser) Name() string       { return "npm/yarn" }
-func (p *PackageJSONParser) Files() []string    { return []string{"package.json"} }
+func (p *PackageJSONParser) Name() string    { return "npm/yarn" }
+func (p *PackageJSONParser) Files() []string { return []string{"package.json"} }
 func (p *PackageJSONParser) Parse(path string) ([]Dependency, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -264,8 +264,10 @@ func (p *PackageJSONParser) Parse(path string) ([]Dependency, error) {
 // RequirementsTXTParser parses Python requirements.txt files
 type RequirementsTXTParser struct{}
 
-func (p *RequirementsTXTParser) Name() string    { return "pip" }
-func (p *RequirementsTXTParser) Files() []string { return []string{"requirements.txt", "requirements-dev.txt"} }
+func (p *RequirementsTXTParser) Name() string { return "pip" }
+func (p *RequirementsTXTParser) Files() []string {
+	return []string{"requirements.txt", "requirements-dev.txt"}
+}
 func (p *RequirementsTXTParser) Parse(path string) ([]Dependency, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -401,7 +403,6 @@ func (p *PomXMLParser) Parse(path string) ([]Dependency, error) {
 					File:      path,
 				})
 				artifactID = ""
-				version = ""
 			}
 		}
 	}

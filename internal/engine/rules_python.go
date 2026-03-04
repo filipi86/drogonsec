@@ -82,15 +82,15 @@ func pythonRules() []Rule {
 
 		// A04:2025 - Weak hash algorithm (SHA1)
 		{
-			ID:       "PY-005",
-			Language: config.LangPython,
-			Severity: config.SeverityMedium,
-			Title:    "Use of SHA1 weak hash algorithm",
+			ID:          "PY-005",
+			Language:    config.LangPython,
+			Severity:    config.SeverityMedium,
+			Title:       "Use of SHA1 weak hash algorithm",
 			Description: "SHA1 is considered weak for security purposes and collision attacks are practical.",
-			Pattern: mustCompile(`(?i)hashlib\.sha1\s*\(`),
-			OWASP:   config.OWASP_A04_CryptographicFailures,
-			CWE:     "CWE-327",
-			CVSS:    5.9,
+			Pattern:     mustCompile(`(?i)hashlib\.sha1\s*\(`),
+			OWASP:       config.OWASP_A04_CryptographicFailures,
+			CWE:         "CWE-327",
+			CVSS:        5.9,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/327.html",
 			},
