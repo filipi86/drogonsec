@@ -9,7 +9,7 @@
 
 </div>
 
-<img width="1099" height="404" alt="image" src="https://github.com/user-attachments/assets/4f0c9136-cff9-4122-bbcc-e23eed71c48f" />
+<img width="1099" height="404" alt="image" src="https://github.com/user-attachments/assets/500be7b6-98ca-43b1-a580-fba6bf32adde" />
 
 > An open-source, comprehensive security scanner combining SAST, SCA, and secret detection aligned with OWASP Top 10:2025 — created for intelligent remediation.
 
@@ -259,7 +259,7 @@ Apache License 2.0 — See [LICENSE](LICENSE)
 
 ## Credits
 
-Inspired by [Horusec](https://github.com/ZupIT/horusec) (ZupIT). DragonSec is its modern, actively maintained, and updated with enhanced capabilities.
+Inspired by Horusec. DragonSec is its modern, actively maintained, and updated with enhanced capabilities.
 
 Built with: Go, Cobra, Viper, go-git.
 
