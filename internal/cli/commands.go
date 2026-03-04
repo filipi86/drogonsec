@@ -20,7 +20,7 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("\n  OWASP Top 10:2025 aligned\n")
 		fmt.Printf("  CWE / CVSS 3.1 / SARIF 2.1 support\n")
 		fmt.Printf("\n  %s  SAST · SCA · Leaks · IaC   (open-source)\n", color.GreenString("✓"))
-		fmt.Printf("  %s  AI remediation               (Enterprise)\n", color.New(color.FgMagenta, color.Bold).Sprint("✦"))
+		fmt.Printf("  %s  AI remediation               (Coming soon)\n", color.New(color.FgMagenta, color.Bold).Sprint("✦"))
 	},
 }
 

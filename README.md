@@ -23,7 +23,7 @@
 | **SCA**  | Software Composition Analysis — scan dependencies for CVEs |
 | **Leaks** | Secret detection — 50+ patterns (AWS, GCP, GitHub, JWT, SSH keys...) |
 | **IaC**  | Infrastructure as Code misconfigurations (Terraform, Kubernetes) |
-| **AI**   | AI-powered remediation suggestions (Enterprise) |
+| **AI**   | AI-powered remediation suggestions (Coming soon) |
 
 ### Security Frameworks
 - **OWASP Top 10:2025** — All 10 categories covered (including 2 new: Supply Chain & Mishandling Exceptions)
@@ -64,7 +64,7 @@ drogonsec scan ./myproject --format json --output report.json
 # Scan with HTML report
 drogonsec scan . --format html --output report.html
 
-# Scan with AI remediation [Enterprise] (requires AI_API_KEY)
+# Scan with AI remediation (Coming soon) (requires AI_API_KEY)
 export AI_API_KEY="..."
 drogonsec scan . --enable-ai
 
@@ -162,9 +162,9 @@ fail_on:
 
 ---
 
-## AI Integration (Enterprise)
+## AI Integration (Coming soon)
 
-DrogonSec includes AI-powered remediation for Enterprise users, providing intelligent, context-aware fixes for detected vulnerabilities:
+DrogonSec includes AI-powered remediation (Coming soon), providing intelligent, context-aware fixes for detected vulnerabilities:
 
 ```bash
 # Set your AI provider API key
@@ -173,7 +173,7 @@ export AI_API_KEY="..."
 # Enable AI remediation
 drogonsec scan . --enable-ai
 
-# Enterprise: use your own AI provider
+# Coming soon: use your own AI provider
 drogonsec scan . --enable-ai \
   --ai-provider openai \
   --ai-model gpt-4o \
@@ -231,7 +231,7 @@ drogonsec/
 │   ├── leaks/          # Secret detection engine
 │   ├── sca/            # Dependency analysis engine
 │   ├── reporter/       # Text/JSON/SARIF/HTML reporters
-│   ├── ai/             # AI remediation engine (Enterprise)
+│   ├── ai/             # AI remediation engine (Coming soon)
 │   └── config/         # Types and configuration
 └── rules/              # YAML rule definitions (community-extensible)
 ```

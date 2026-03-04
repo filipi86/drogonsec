@@ -25,7 +25,7 @@ const (
 )
 
 // ClientConfig configures the AI client.
-// Enterprise users can supply their own Provider, Model and Endpoint
+// Users can supply their own Provider, Model and Endpoint
 // to integrate any OpenAI-compatible or custom AI backend.
 type ClientConfig struct {
 	APIKey   string // AI provider API key

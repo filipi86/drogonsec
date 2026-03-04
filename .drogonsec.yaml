@@ -58,7 +58,7 @@ output:
   # Show code snippets in text output
   show_code: true
 
-# AI Integration (Enterprise)
+# AI Integration (Coming soon)
 ai:
   # Enable AI-powered remediation suggestions
   enabled: false
@@ -68,7 +68,7 @@ ai:
   provider: "anthropic"
   # Model name override (leave empty to use provider default)
   model: ""
-  # Custom AI endpoint URL (for self-hosted or Enterprise AI)
+  # Custom AI endpoint URL (for self-hosted or Coming soon AI)
   endpoint: ""
   # Only enrich HIGH and CRITICAL findings (reduces API calls)
   high_severity_only: true

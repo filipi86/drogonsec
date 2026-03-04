@@ -107,7 +107,7 @@ func PrintDragonBanner() {
 			gn("LEAKS") + dim(" │ ") +
 			gn("GIT-HISTORY") + dim(" │ ") +
 			gn("IaC") + dim(" │ ") +
-			nCyan("Remediation AI [Enterprise]")))
+			nCyan("Remediation AI (Coming soon)")))
 	fmt.Println(boxLine(
 		nCyan("►") + " " +
 			nYel("Created by Filipi Pires") +
