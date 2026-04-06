@@ -3,6 +3,7 @@ package reporter
 import (
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"io"
 	"strings"
 	"time"
@@ -407,7 +408,7 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		for _, f := range result.SASTFindings {
 			aiSection := ""
 		if f.AIRemediation != "" {
-			aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, f.AIRemediation)
+			aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, htmlpkg.EscapeString(f.AIRemediation))
 		}
 		html += fmt.Sprintf(`
 <div class="finding">
@@ -421,7 +422,7 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
   <p style="color:#94a3b8;font-size:0.875rem">%s</p>
   <div class="remediation">%s</div>
   %s
-</div>`, severityBadge(f.Severity), f.Title, f.File, f.Line, f.RuleID, f.OWASP, f.CWE, f.CVSS, f.Description, f.Remediation, aiSection)
+</div>`, severityBadge(f.Severity), htmlpkg.EscapeString(f.Title), htmlpkg.EscapeString(f.File), f.Line, htmlpkg.EscapeString(f.RuleID), htmlpkg.EscapeString(string(f.OWASP)), htmlpkg.EscapeString(f.CWE), f.CVSS, htmlpkg.EscapeString(f.Description), htmlpkg.EscapeString(f.Remediation), aiSection)
 		}
 		html += `</div>`
 	}
@@ -432,7 +433,7 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		for _, f := range result.LeakFindings {
 			aiSection := ""
 			if f.AIRemediation != "" {
-				aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, f.AIRemediation)
+				aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, htmlpkg.EscapeString(f.AIRemediation))
 			}
 			html += fmt.Sprintf(`
 <div class="finding">
@@ -444,7 +445,7 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
   </div>
   <p style="color:#94a3b8;font-size:0.875rem">%s</p>
   %s
-</div>`, severityBadge(f.Severity), f.Type, f.File, f.Line, f.RuleID, f.Match, f.Description, aiSection)
+</div>`, severityBadge(f.Severity), htmlpkg.EscapeString(f.Type), htmlpkg.EscapeString(f.File), f.Line, htmlpkg.EscapeString(f.RuleID), htmlpkg.EscapeString(f.Match), htmlpkg.EscapeString(f.Description), aiSection)
 		}
 		html += `</div>`
 	}
@@ -464,7 +465,7 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
   </div>
   <p style="color:#94a3b8;font-size:0.875rem">%s</p>
   <div class="remediation">Upgrade to version %s or higher. See: <a href="%s" style="color:#38bdf8">%s</a></div>
-</div>`, severityBadge(f.Severity), f.PackageName, f.PackageVersion, f.CVE, f.CVSS, f.ManifestFile, f.FixedVersion, f.Ecosystem, f.Description, f.FixedVersion, f.Advisory, f.CVE)
+</div>`, severityBadge(f.Severity), htmlpkg.EscapeString(f.PackageName), htmlpkg.EscapeString(f.PackageVersion), htmlpkg.EscapeString(f.CVE), f.CVSS, htmlpkg.EscapeString(f.ManifestFile), htmlpkg.EscapeString(f.FixedVersion), htmlpkg.EscapeString(f.Ecosystem), htmlpkg.EscapeString(f.Description), htmlpkg.EscapeString(f.FixedVersion), htmlpkg.EscapeString(f.Advisory), htmlpkg.EscapeString(f.CVE))
 		}
 		html += `</div>`
 	}

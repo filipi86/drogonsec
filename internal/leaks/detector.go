@@ -81,6 +81,12 @@ func (d *Detector) ScanFile(filePath string) ([]LeakFinding, error) {
 		if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
+		// Guard against ReDoS: skip lines that are unreasonably long.
+		// Legitimate secrets never exceed 10 000 chars; minified/binary
+		// content can cause catastrophic backtracking on complex regexes.
+		if len(line) > 10000 {
+			continue
+		}
 
 		for _, rule := range d.rules {
 			if rule.Pattern.MatchString(line) {
@@ -163,6 +169,9 @@ func (d *Detector) ScanGitHistory(repoPath string) ([]LeakFinding, error) {
 			for lineNum, line := range lines {
 				trimmed := strings.TrimSpace(line)
 				if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
+					continue
+				}
+				if len(line) > 10000 {
 					continue
 				}
 

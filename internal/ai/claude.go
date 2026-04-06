@@ -51,6 +51,13 @@ func New(cfg ClientConfig) *Client {
 	if cfg.Endpoint == "" {
 		cfg.Endpoint = defaultEndpoint
 	}
+	// Reject plaintext HTTP to prevent API key exposure in transit.
+	// Allow localhost HTTP for local development/testing only.
+	if !strings.HasPrefix(cfg.Endpoint, "https://") &&
+		!strings.HasPrefix(cfg.Endpoint, "http://localhost") &&
+		!strings.HasPrefix(cfg.Endpoint, "http://127.0.0.1") {
+		cfg.Endpoint = defaultEndpoint // silently fall back to safe default
+	}
 	return &Client{
 		cfg: cfg,
 		httpClient: &http.Client{
