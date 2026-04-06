@@ -1,167 +1,263 @@
 # Modules & Engines
 
-Drogonsec is composed of specialized scanning engines, each targeting a different attack surface. All engines run in parallel by default and can be individually enabled or disabled.
+Drogonsec is composed of specialized scanning engines, each targeting a different attack surface. All engines run in parallel by default and can be individually enabled or disabled via CLI flags or the configuration file.
 
 ---
 
 ## Engine Overview
 
-| Engine | Flag | Description |
-|--------|------|-------------|
-| **SAST** | `--no-sast` to disable | Static code analysis for 20+ languages |
-| **SCA** | `--no-sca` to disable | Dependency vulnerability scanning |
-| **Leaks** | `--no-leaks` to disable | Secret and credential detection |
-| **IaC** | built-in | Infrastructure as Code misconfiguration detection |
-| **AI Remediation** | `--enable-ai` | Intelligent fix suggestions *(Coming soon)* |
+| Engine | CLI Flag to Disable | Description |
+|--------|---------------------|-------------|
+| **SAST** | `--no-sast` | Static code analysis for 20+ languages |
+| **SCA** | `--no-sca` | Dependency and supply chain vulnerability scanning |
+| **Leaks** | `--no-leaks` | Secret and credential detection (50+ patterns) |
+| **IaC** | built-in with SAST | Infrastructure as Code misconfiguration detection |
+| **AI Remediation** | `--enable-ai` to activate | Intelligent fix suggestions *(coming soon)* |
 
 ---
 
 ## SAST Engine — Static Application Security Testing
 
-The SAST engine analyzes source code for security vulnerabilities without executing it. It supports over **20 programming languages** and maps findings to OWASP, CWE, and CVSS standards.
+The SAST engine analyzes source code for security vulnerabilities without executing it. It applies pattern-matching rules across 20+ programming languages and maps every finding to OWASP, CWE, and CVSS standards.
 
 ### Supported Languages
 
 `Python` `Java` `JavaScript` `TypeScript` `Go` `Kotlin` `C#` `PHP` `Ruby` `Swift` `Dart` `Elixir` `Erlang` `Shell` `C/C++` `HTML` `Terraform` `Kubernetes` `Nginx`
 
-### What it detects
+### What the SAST Engine Detects
 
-- SQL Injection, Command Injection, XSS
-- Hardcoded credentials in source code
-- Insecure cryptographic algorithms
-- Broken authentication patterns
-- Insecure deserialization
-- Path traversal vulnerabilities
-- SSRF and XXE patterns
+| Vulnerability | Example | OWASP |
+|---|---|---|
+| SQL Injection | String formatting in queries | A05:2025 |
+| Command Injection | `os.system()` with user input | A05:2025 |
+| Cross-Site Scripting (XSS) | Unescaped output in templates | A05:2025 |
+| Hardcoded credentials | API keys in source files | A07:2025 |
+| Insecure cryptography | MD5, DES, weak key sizes | A04:2025 |
+| Broken authentication | Missing token validation | A07:2025 |
+| Insecure deserialization | `pickle.loads()` on user input | A08:2025 |
+| Path traversal | Unvalidated file paths | A01:2025 |
+| SSRF | Unvalidated URL fetch | A05:2025 |
+| XXE | Unsafe XML parsers | A05:2025 |
+| Missing exception handling | Bare `except:` blocks | A10:2025 |
+| Security logging failures | No audit trail on sensitive ops | A09:2025 |
 
-### Example finding
+### Example SAST Finding
 
 ```
 #1 [HIGH] SQL Injection via string formatting
 File     : src/users.py:42
 Rule     : PY-001
 OWASP    : A05:2025 - Injection
-CWE      : CWE-89  CVSS: 9.8
+CWE      : CWE-89
+CVSS     : 9.8
 Fix      : Use parameterized queries instead of string formatting
+```
+
+### SAST Rules
+
+Rules are defined as YAML files in the `rules/` directory and are fully community-extensible:
+
+```yaml
+id: PY-001
+name: SQL Injection via string formatting
+severity: HIGH
+language: python
+pattern: "cursor.execute(.*%.*)"
+owasp: A05:2025
+cwe: CWE-89
+cvss: 9.8
+message: "Avoid building SQL queries with string formatting or concatenation."
+fix: "Use parameterized queries: cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))"
 ```
 
 ---
 
 ## SCA Engine — Software Composition Analysis
 
-The SCA engine scans your project's dependency files for known CVEs, outdated packages, and supply chain risks.
+The SCA engine scans your project's dependency manifest files for known CVEs, outdated packages, and supply chain risks. It maps directly to **A03:2025 — Software Supply Chain Failures**, one of the two new categories in OWASP Top 10:2025.
 
-### Supported manifest files
+### Supported Manifest Files
 
-- `package.json` / `package-lock.json` (Node.js)
-- `requirements.txt` / `Pipfile` (Python)
-- `go.mod` / `go.sum` (Go)
-- `pom.xml` / `build.gradle` (Java)
-- `Gemfile.lock` (Ruby)
-- `composer.json` (PHP)
-- `Cargo.toml` (Rust)
+| Ecosystem | Files |
+|---|---|
+| **Node.js** | `package.json`, `package-lock.json`, `yarn.lock` |
+| **Python** | `requirements.txt`, `Pipfile`, `Pipfile.lock`, `pyproject.toml` |
+| **Go** | `go.mod`, `go.sum` |
+| **Java** | `pom.xml`, `build.gradle`, `build.gradle.kts` |
+| **Ruby** | `Gemfile`, `Gemfile.lock` |
+| **PHP** | `composer.json`, `composer.lock` |
+| **Rust** | `Cargo.toml`, `Cargo.lock` |
+| **.NET** | `*.csproj`, `packages.config` |
 
-### OWASP coverage
+### What the SCA Engine Reports
 
-Maps directly to **A03:2025 — Software Supply Chain Failures** (new in OWASP Top 10:2025).
+- CVE identifier and description
+- Affected package name and version
+- Fixed version (if available)
+- CVSS severity score
+- Direct vs transitive dependency flag
+
+### Example SCA Finding
+
+```
+#1 [CRITICAL] CVE-2023-44487 — HTTP/2 Rapid Reset Attack
+Package  : golang.org/x/net v0.8.0
+Fixed in : v0.17.0
+CVSS     : 7.5
+OWASP    : A03:2025 - Software Supply Chain Failures
+```
 
 ---
 
 ## Leaks Engine — Secret Detection
 
-Detects hardcoded secrets, API keys, tokens, and credentials in source code and git history.
+The Leaks engine scans source code, configuration files, and git commit history for hardcoded secrets, API keys, tokens, and credentials. It uses entropy analysis combined with pattern matching for high accuracy.
 
-### Detected patterns (50+)
+### Detection Categories (50+ patterns)
 
-| Category | Patterns |
-|----------|----------|
-| **Cloud** | AWS Access Keys, GCP API Keys, Azure Storage Keys |
-| **SCM** | GitHub tokens (classic, fine-grained, OAuth, App) |
-| **Payment** | Stripe Secret/Restricted Keys |
-| **Communication** | Slack Bot/App tokens, Webhook URLs |
-| **Email** | SendGrid API Keys |
-| **Crypto** | RSA/EC/SSH/PGP private keys, JWT tokens |
-| **Database** | Connection strings (PostgreSQL, MySQL, MongoDB, Redis) |
-| **Generic** | Hardcoded passwords, API keys, secrets |
+| Category | Patterns Detected |
+|---|---|
+| **Cloud — AWS** | Access Key ID, Secret Access Key, Session Token |
+| **Cloud — GCP** | API Keys, Service Account JSON, OAuth tokens |
+| **Cloud — Azure** | Storage Account Keys, Connection Strings, SAS tokens |
+| **Source Control** | GitHub tokens (classic, fine-grained, OAuth, GitHub App) |
+| **Payment** | Stripe Secret Keys, Restricted Keys, Webhook secrets |
+| **Communication** | Slack Bot tokens, App tokens, Webhook URLs |
+| **Email** | SendGrid API Keys, Mailgun API Keys |
+| **Cryptographic** | RSA private keys, EC private keys, SSH private keys, PGP keys |
+| **Authentication** | JWT tokens, Bearer tokens, Basic auth credentials |
+| **Databases** | PostgreSQL, MySQL, MongoDB, Redis connection strings |
+| **Generic** | Hardcoded passwords, generic API keys and secrets |
 
-### Scan git history
+### Entropy Analysis
+
+The engine uses Shannon entropy to flag high-randomness strings that are likely to be secrets, even when they don't match known patterns:
+
+```yaml
+engines:
+  leaks:
+    enabled: true
+    min_entropy: 3.5    # adjust sensitivity (default: 3.5)
+```
+
+### Git History Scanning
 
 ```bash
 drogonsec scan . --git-history
 ```
 
-This scans all commits in the repository history, not just the current state of the code.
+This scans every commit in the repository history, not just the current state of the working directory. This is critical for catching secrets that were added and later deleted — they still exist in git history and are fully recoverable.
+
+### Example Leak Finding
+
+```
+#1 [CRITICAL] AWS Access Key found
+File     : config/deploy.sh:14
+Pattern  : AWS_ACCESS_KEY_ID
+Value    : AKIA****************EXAMPLE
+Entropy  : 4.2
+OWASP    : A07:2025 - Authentication Failures
+CWE      : CWE-312
+Fix      : Remove the key, rotate it immediately in AWS IAM, and use environment variables or a secrets manager
+```
 
 ---
 
 ## IaC Engine — Infrastructure as Code
 
-Detects security misconfigurations in infrastructure definition files.
+The IaC engine detects security misconfigurations in infrastructure definition files. It runs as part of the SAST engine and applies IaC-specific rule sets.
 
-### Supported formats
+### Supported Formats
 
-- **Terraform** — AWS, GCP, Azure resources
-- **Kubernetes** — Pod security, RBAC, network policies
-- **Docker** — Dockerfile best practices
+| Format | Coverage |
+|---|---|
+| **Terraform** | AWS, GCP, Azure resources |
+| **Kubernetes** | Pod security, RBAC, network policies, resource limits |
+| **Dockerfile** | Image best practices, privilege escalation risks |
+| **Nginx** | TLS configuration, security headers |
 
-### Common detections
+### Common Detections
 
-- Public S3 buckets
-- Overly permissive IAM roles
-- Missing encryption at rest
-- Containers running as root
-- Exposed ports and services
-- Missing resource limits
+- Public S3 buckets with no access control
+- Overly permissive IAM roles (`*` actions or resources)
+- Missing encryption at rest on storage resources
+- Containers running as root (`runAsRoot: true`)
+- Exposed sensitive ports (22, 3306, 5432) to the internet
+- Missing Kubernetes resource limits (CPU, memory)
+- Insecure TLS versions or cipher suites in Nginx
+- Docker images using `latest` tag (supply chain risk)
+
+### Example IaC Finding
+
+```
+#1 [HIGH] S3 bucket is publicly accessible
+File     : infra/storage.tf:12
+Rule     : TF-AWS-S3-001
+OWASP    : A02:2025 - Security Misconfiguration
+CWE      : CWE-732
+Fix      : Set `acl = "private"` and enable `block_public_acls = true`
+```
 
 ---
 
 ## AI Remediation Engine *(Coming soon)*
 
-The AI engine provides intelligent, context-aware fix suggestions for detected vulnerabilities.
+The AI engine provides intelligent, context-aware fix suggestions for detected vulnerabilities. It understands the code context around each finding and generates corrected code snippets.
+
+### Planned Capabilities
+
+- Context-aware code fixes tailored to the specific vulnerability
+- Support for multiple AI providers (OpenAI, Anthropic, custom endpoints)
+- High-severity-only mode to reduce noise in large codebases
+- Inline corrected code snippets alongside each finding
+- Batch remediation reports exportable as patch files
+
+### Usage Preview
 
 ```bash
 # Set your AI provider API key
-export AI_API_KEY="..."
+export AI_API_KEY="your-api-key-here"
 
 # Enable AI remediation
 drogonsec scan . --enable-ai
-```
 
-### Planned features
-
-- Context-aware code fix suggestions
-- Support for multiple AI providers (OpenAI, Anthropic, custom endpoints)
-- High-severity-only mode to reduce noise
-- Corrected code snippets inline with findings
-
-```bash
-# Coming soon: use your own AI provider
+# Use a custom AI provider
 drogonsec scan . --enable-ai \
   --ai-provider openai \
   --ai-model gpt-4o \
   --ai-endpoint https://your-endpoint/v1/messages
 ```
 
-### Example AI output
+### Example AI Output Preview
 
 ```
-🤖 AI Remediation:
-The SQL injection in line 42 allows attackers to manipulate your query...
+🤖 AI Remediation for Finding #1:
+
+The SQL injection on line 42 of src/users.py allows an attacker to
+manipulate the database query by injecting malicious SQL through
+the `user_id` parameter.
+
+Vulnerable code:
+  cursor.execute("SELECT * FROM users WHERE id = " + user_id)
 
 Corrected code:
   cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+
+Explanation:
+  Parameterized queries ensure that user input is always treated as
+  data, never as part of the SQL statement, preventing injection attacks.
 ```
 
 ---
 
-## OWASP Top 10:2025 Coverage
+## OWASP Top 10:2025 Full Coverage
 
-| # | Category | Engine | Rules |
-|---|----------|--------|-------|
+| # | Category | Engine(s) | Rules |
+|---|----------|-----------|-------|
 | A01 | Broken Access Control | SAST | ✅ 23 rules |
 | A02 | Security Misconfiguration | SAST + IaC | ✅ 31 rules |
-| A03 | Software Supply Chain Failures 🆕 | SCA | ✅ Full coverage |
-| A04 | Cryptographic Failures | SAST | ✅ 18 rules |
+| A03 | Software Supply Chain Failures 🆕 | SCA | ✅ Full engine |
+| A04 | Cryptographic Failures | SAST + Leaks | ✅ 18 rules |
 | A05 | Injection | SAST | ✅ 45 rules |
 | A06 | Insecure Design | SAST | ✅ 15 rules |
 | A07 | Authentication Failures | SAST + Leaks | ✅ 20 rules |
@@ -171,19 +267,25 @@ Corrected code:
 
 ---
 
-## Extending with Custom Rules
+## Writing Custom Rules
 
-Drogonsec rules are defined as YAML files in the `rules/` directory, making them easy to add and share with the community.
+All SAST rules are YAML files in the `rules/` directory, making them easy to contribute to the community:
 
 ```yaml
-# rules/custom/my-rule.yaml
 id: CUSTOM-001
-name: My Custom Rule
+name: Dangerous use of eval() with user input
 severity: HIGH
 language: python
 pattern: "eval(.*request.*)"
 owasp: A05:2025
 cwe: CWE-95
-message: "Avoid using eval() with user-supplied input"
-fix: "Use ast.literal_eval() for safe evaluation"
+cvss: 8.8
+message: "Avoid using eval() with any user-supplied or external input."
+fix: "Use ast.literal_eval() for safe evaluation of literals, or refactor to avoid dynamic evaluation entirely."
+```
+
+To add the rule, place it in `rules/custom/my-rule.yaml` and rebuild:
+
+```bash
+make install
 ```
