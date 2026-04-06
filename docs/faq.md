@@ -10,7 +10,7 @@ Drogonsec is an open-source modular security framework written in Go, created by
 
 ### Who created Drogonsec?
 
-Drogonsec was created by **Filipi Pires** — Head of Identity Threat Labs, Global Threat Researcher, Cybersecurity Advocate, Instructor, Speaker, and Writer about Malware Hunting. The project is maintained by [CROSS-INTEL](https://cross-intel.com).
+Drogonsec was created by **Filipi Pires** — Head of Technical Advocay, Global Threat Researcher, Cybersecurity Advocate, Instructor, Speaker, and Writer about Malware Hunting. The project is maintained by [CROSS-INTEL](https://cross-intel.com/opensource/drogonsec).
 
 ### Who is Drogonsec for?
 
