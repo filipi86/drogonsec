@@ -7,6 +7,8 @@
 
 > An open-source, comprehensive security scanner combining **SAST**, **SCA**, and **secret detection** — aligned with OWASP Top 10:2025 and built for intelligent remediation.
 
+<img width="1024" height="401" alt="Screenshot 2026-04-06 at 13 01 37" src="https://github.com/user-attachments/assets/4eaae128-9e49-4ed1-a714-165a10bbf13e" />
+
 ---
 
 ## What is Drogonsec?
@@ -96,7 +98,8 @@ drogonsec/
 ## Credits & Acknowledgements
 
 - **Created by:** [Filipi Pires](https://github.com/filipi86) — Head of Identity Threat Labs, Global Threat Researcher, Cybersecurity Advocate, Instructor, Speaker and Writer about Malware Hunting
+
 - **Maintained by:** [CROSS-INTEL](https://cross-intel.com)
-- **Inspired by:** [Horusec](https://github.com/ZupIT/horusec)
+
 - **Built with:** Go, Cobra, Viper, go-git
 - **License:** Apache License 2.0
