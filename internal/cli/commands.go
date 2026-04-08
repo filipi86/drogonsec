@@ -44,8 +44,8 @@ var rulesListCmd = &cobra.Command{
 
 		if showByOWASP {
 			owaspCategories := []struct {
-				id   string
-				name string
+				id    string
+				name  string
 				rules int
 			}{
 				{"A01:2025", "Broken Access Control", 23},

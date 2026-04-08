@@ -133,13 +133,13 @@ func (r *TextReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 type JSONReporter struct{}
 
 type jsonOutput struct {
-	Version      string                `json:"version"`
-	ScanTime     string                `json:"scan_time"`
-	Duration     string                `json:"duration"`
-	Target       string                `json:"target"`
-	Stats        analyzer.ScanStats    `json:"stats"`
-	SASTFindings []analyzer.Finding    `json:"sast_findings"`
-	SCAFindings  []analyzer.SCAFinding `json:"sca_findings"`
+	Version      string                 `json:"version"`
+	ScanTime     string                 `json:"scan_time"`
+	Duration     string                 `json:"duration"`
+	Target       string                 `json:"target"`
+	Stats        analyzer.ScanStats     `json:"stats"`
+	SASTFindings []analyzer.Finding     `json:"sast_findings"`
+	SCAFindings  []analyzer.SCAFinding  `json:"sca_findings"`
 	LeakFindings []analyzer.LeakFinding `json:"leak_findings"`
 }
 
@@ -180,10 +180,10 @@ type sarifTool struct {
 }
 
 type sarifDriver struct {
-	Name            string      `json:"name"`
-	Version         string      `json:"version"`
-	InformationURI  string      `json:"informationUri"`
-	Rules           []sarifRule `json:"rules"`
+	Name           string      `json:"name"`
+	Version        string      `json:"version"`
+	InformationURI string      `json:"informationUri"`
+	Rules          []sarifRule `json:"rules"`
 }
 
 type sarifRule struct {
@@ -219,7 +219,7 @@ type sarifArtifactLocation struct {
 }
 
 type sarifRegion struct {
-	StartLine int `json:"startLine"`
+	StartLine   int `json:"startLine"`
 	StartColumn int `json:"startColumn,omitempty"`
 }
 
@@ -238,18 +238,18 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 				ShortDescription: sarifMessage{Text: f.Title},
 				FullDescription:  sarifMessage{Text: f.Description},
 				Properties: map[string]interface{}{
-					"severity":     string(f.Severity),
-					"owasp":        string(f.OWASP),
-					"cwe":          f.CWE,
-					"cvss":         f.CVSS,
+					"severity": string(f.Severity),
+					"owasp":    string(f.OWASP),
+					"cwe":      f.CWE,
+					"cvss":     f.CVSS,
 				},
 			})
 			ruleSet[f.RuleID] = true
 		}
 
 		results = append(results, sarifResult{
-			RuleID: f.RuleID,
-			Level:  sarifLevel(f.Severity),
+			RuleID:  f.RuleID,
+			Level:   sarifLevel(f.Severity),
 			Message: sarifMessage{Text: fmt.Sprintf("%s - %s", f.Title, f.Remediation)},
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
@@ -407,10 +407,10 @@ func (r *HTMLReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		html += fmt.Sprintf(`<div class="section"><h2>🔍 SAST Findings (%d)</h2>`, len(result.SASTFindings))
 		for _, f := range result.SASTFindings {
 			aiSection := ""
-		if f.AIRemediation != "" {
-			aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, htmlpkg.EscapeString(f.AIRemediation))
-		}
-		html += fmt.Sprintf(`
+			if f.AIRemediation != "" {
+				aiSection = fmt.Sprintf(`<div class="ai-remediation"><strong>🤖 AI Remediation:</strong><p>%s</p></div>`, htmlpkg.EscapeString(f.AIRemediation))
+			}
+			html += fmt.Sprintf(`
 <div class="finding">
   <div class="finding-header">%s<span class="finding-title">%s</span></div>
   <div class="finding-meta">

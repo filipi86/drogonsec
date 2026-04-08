@@ -283,12 +283,12 @@ func (a *Analyzer) runSCA(result *ScanResult) error {
 
 // printSummary outputs a visual summary of findings
 func (a *Analyzer) printSummary(result *ScanResult) {
-	cyan  := color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	cyan := color.New(color.FgHiCyan, color.Bold).SprintFunc()
 	white := color.New(color.FgHiWhite, color.Bold).SprintFunc()
-	dim   := color.New(color.FgHiBlack).SprintFunc()
-	bold  := color.New(color.Bold).SprintFunc()
+	dim := color.New(color.FgHiBlack).SprintFunc()
+	bold := color.New(color.Bold).SprintFunc()
 
-	thick  := cyan(summaryRepeat("═", 62))
+	thick := cyan(summaryRepeat("═", 62))
 	border := cyan(summaryRepeat("─", 62))
 
 	dur := result.Duration.Round(time.Millisecond).String()
@@ -298,24 +298,24 @@ func (a *Analyzer) printSummary(result *ScanResult) {
 	fmt.Printf("  %s  %s\n", cyan("📊"), white("SCAN SUMMARY"))
 	fmt.Printf("  %s\n", thick)
 	fmt.Printf("  %s %-18s  %s %-12s  %s %s\n",
-		dim("Files:"),    bold(fmt.Sprintf("%d", result.FilesScanned)),
+		dim("Files:"), bold(fmt.Sprintf("%d", result.FilesScanned)),
 		dim("Duration:"), bold(dur),
-		dim("Total:"),    bold(fmt.Sprintf("%d", result.Stats.TotalFindings)),
+		dim("Total:"), bold(fmt.Sprintf("%d", result.Stats.TotalFindings)),
 	)
 	fmt.Printf("  %s\n", border)
 
 	// Visual severity bars
 	printSeverityBar("  CRITICAL", result.Stats.CriticalCount, color.New(color.FgHiRed, color.Bold), "█")
-	printSeverityBar("  HIGH    ", result.Stats.HighCount,     color.New(color.FgRed),               "█")
-	printSeverityBar("  MEDIUM  ", result.Stats.MediumCount,   color.New(color.FgHiYellow),          "▓")
-	printSeverityBar("  LOW     ", result.Stats.LowCount,      color.New(color.FgCyan),              "░")
-	printSeverityBar("  INFO    ", result.Stats.InfoCount,      color.New(color.FgHiBlack),          "·")
+	printSeverityBar("  HIGH    ", result.Stats.HighCount, color.New(color.FgRed), "█")
+	printSeverityBar("  MEDIUM  ", result.Stats.MediumCount, color.New(color.FgHiYellow), "▓")
+	printSeverityBar("  LOW     ", result.Stats.LowCount, color.New(color.FgCyan), "░")
+	printSeverityBar("  INFO    ", result.Stats.InfoCount, color.New(color.FgHiBlack), "·")
 
 	fmt.Printf("  %s\n", border)
 	fmt.Printf("  %s %-8s   %s %-8s   %s %s\n",
-		color.New(color.FgHiYellow).Sprint("⚡ SAST"),  bold(fmt.Sprintf("%d", result.Stats.SASTCount)),
-		color.New(color.FgHiBlue).Sprint("📦 SCA"),    bold(fmt.Sprintf("%d", result.Stats.SCACount)),
-		color.New(color.FgHiRed).Sprint("🔑 Leaks"),   bold(fmt.Sprintf("%d", result.Stats.LeaksCount)),
+		color.New(color.FgHiYellow).Sprint("⚡ SAST"), bold(fmt.Sprintf("%d", result.Stats.SASTCount)),
+		color.New(color.FgHiBlue).Sprint("📦 SCA"), bold(fmt.Sprintf("%d", result.Stats.SCACount)),
+		color.New(color.FgHiRed).Sprint("🔑 Leaks"), bold(fmt.Sprintf("%d", result.Stats.LeaksCount)),
 	)
 	fmt.Printf("  %s\n", thick)
 

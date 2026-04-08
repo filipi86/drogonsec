@@ -122,14 +122,14 @@ func runScan(cmd *cobra.Command, args []string) error {
 		AIModel:      aiModel,
 		AIEndpoint:   aiEndpoint,
 		GitHistory:   enableGitScan,
-		EnableSAST:    !disableSAST,
-		EnableSCA:     !disableSCA,
-		EnableLeaks:   !disableLeaks,
-		MinSeverity:   severity,
-		Languages:     languages,
-		MaxWorkers:    maxWorkers,
-		Verbose:       viper.GetBool("verbose"),
-		RulesDir:      rulesDir,
+		EnableSAST:   !disableSAST,
+		EnableSCA:    !disableSCA,
+		EnableLeaks:  !disableLeaks,
+		MinSeverity:  severity,
+		Languages:    languages,
+		MaxWorkers:   maxWorkers,
+		Verbose:      viper.GetBool("verbose"),
+		RulesDir:     rulesDir,
 	}
 
 	// Graphical scan header
@@ -184,7 +184,6 @@ func runScan(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 // enrichResult calls the AI engine to add remediation suggestions to findings.
 func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {

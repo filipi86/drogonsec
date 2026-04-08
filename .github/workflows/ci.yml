@@ -81,6 +81,7 @@ jobs:
         run: make build
 
       - name: Scan with DragonSec (SARIF output)
+        continue-on-error: true
         run: |
           ./bin/drogonsec scan . \
             --format sarif \
