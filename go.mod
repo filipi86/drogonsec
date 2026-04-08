@@ -1,4 +1,4 @@
-module github.com/drogonsec/drogonsec
+module github.com/filipi86/drogonsec
 
 go 1.24.0
 
