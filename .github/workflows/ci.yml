@@ -42,9 +42,13 @@ jobs:
           file: ./coverage.out
 
       - name: Build binary
-        run: make build
-        env:
-          LDFLAGS: -X github.com/drogonsec/drogonsec/internal/cli.Environment=production
+        run: |
+          mkdir -p bin
+          go build \
+            -ldflags "-X main.Version=$(git describe --tags --always 2>/dev/null || echo '0.1.0') \
+                      -X github.com/drogonsec/drogonsec/internal/cli.Environment=production" \
+            -o bin/drogonsec \
+            ./cmd/drogonsec/main.go
 
   # ============ LINT ============
   lint:

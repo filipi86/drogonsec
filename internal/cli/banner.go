@@ -81,14 +81,14 @@ func padTo(s string, w int) string {
 // PrintDragonBanner prints the DrogonSec cyberpunk banner.
 func PrintDragonBanner() {
 	theme := resolveTheme()
-	fr    := theme.frame
+	fr := theme.frame
 	title := theme.titleText
 
 	// ── Colour palette ────────────────────────────────────────────────────────
 	nYel := color.New(color.FgHiYellow, color.Bold).SprintFunc()
 	bold := color.New(color.FgHiWhite, color.Bold).SprintFunc()
-	dim  := color.New(color.FgHiBlack).SprintFunc()
-	gn   := color.New(color.FgHiGreen, color.Bold).SprintFunc()
+	dim := color.New(color.FgHiBlack).SprintFunc()
+	gn := color.New(color.FgHiGreen, color.Bold).SprintFunc()
 	nMag := color.New(color.FgHiMagenta, color.Bold).SprintFunc()
 
 	// ── Frame helpers (W = inner width between ╔ and ╗) ──────────────────────
@@ -163,8 +163,8 @@ func PrintDragonBanner() {
 
 // PrintScanBanner prints the graphical header for a scan operation
 func PrintScanBanner(path string, sast, sca, leaks, ai bool, format string, enterprise func(...interface{}) string) {
-	cyan  := color.New(color.FgHiCyan, color.Bold).SprintFunc()
-	dim   := color.New(color.FgHiBlack).SprintFunc()
+	cyan := color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	dim := color.New(color.FgHiBlack).SprintFunc()
 	white := color.New(color.FgHiWhite, color.Bold).SprintFunc()
 
 	width := 60
@@ -179,9 +179,9 @@ func PrintScanBanner(path string, sast, sca, leaks, ai bool, format string, ente
 
 	fmt.Printf("  %s  %s   %s  %s   %s  %s   %s  %s\n",
 		engineDot(sast), engineLabel("SAST", sast),
-		engineDot(sca),  engineLabel("SCA", sca),
+		engineDot(sca), engineLabel("SCA", sca),
 		engineDot(leaks), engineLabel("Leaks", leaks),
-		engineDot(ai),   aiLabel(ai, enterprise),
+		engineDot(ai), aiLabel(ai, enterprise),
 	)
 	fmt.Printf("  %s\n", border)
 	fmt.Printf("  %s %s\n", dim("Format"), white(format))
@@ -197,14 +197,14 @@ func PrintScanSummary(total, critical, high, medium, low, info int,
 	files int,
 	outputFile string,
 ) {
-	cyan  := color.New(color.FgHiCyan, color.Bold).SprintFunc()
+	cyan := color.New(color.FgHiCyan, color.Bold).SprintFunc()
 	white := color.New(color.FgHiWhite, color.Bold).SprintFunc()
-	dim   := color.New(color.FgHiBlack).SprintFunc()
-	bold  := color.New(color.Bold).SprintFunc()
+	dim := color.New(color.FgHiBlack).SprintFunc()
+	bold := color.New(color.Bold).SprintFunc()
 
 	width := 60
 	border := cyan(repeatChar("─", width))
-	thick  := cyan(repeatChar("═", width))
+	thick := cyan(repeatChar("═", width))
 
 	fmt.Println()
 	fmt.Printf("  %s\n", thick)
@@ -219,15 +219,15 @@ func PrintScanSummary(total, critical, high, medium, low, info int,
 	fmt.Printf("  %s\n", border)
 
 	printVisualBar("  CRITICAL", critical, color.New(color.FgHiRed, color.Bold), "█", 30)
-	printVisualBar("  HIGH    ", high,     color.New(color.FgRed),               "█", 30)
-	printVisualBar("  MEDIUM  ", medium,   color.New(color.FgHiYellow),          "▓", 30)
-	printVisualBar("  LOW     ", low,      color.New(color.FgCyan),              "░", 30)
-	printVisualBar("  INFO    ", info,     color.New(color.FgHiBlack),           "·", 30)
+	printVisualBar("  HIGH    ", high, color.New(color.FgRed), "█", 30)
+	printVisualBar("  MEDIUM  ", medium, color.New(color.FgHiYellow), "▓", 30)
+	printVisualBar("  LOW     ", low, color.New(color.FgCyan), "░", 30)
+	printVisualBar("  INFO    ", info, color.New(color.FgHiBlack), "·", 30)
 
 	fmt.Printf("  %s\n", border)
 	fmt.Printf("  %s  %-10s  %s  %-10s  %s  %s\n",
-		color.New(color.FgHiYellow).Sprint("⚡ SAST"),  bold(fmt.Sprintf("%d", sast)),
-		color.New(color.FgHiBlue).Sprint("📦 SCA"),   bold(fmt.Sprintf("%d", sca)),
+		color.New(color.FgHiYellow).Sprint("⚡ SAST"), bold(fmt.Sprintf("%d", sast)),
+		color.New(color.FgHiBlue).Sprint("📦 SCA"), bold(fmt.Sprintf("%d", sca)),
 		color.New(color.FgHiRed).Sprint("🔑 Leaks"), bold(fmt.Sprintf("%d", leaks)),
 	)
 	fmt.Printf("  %s\n", thick)

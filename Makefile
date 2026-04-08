@@ -5,7 +5,7 @@ BINARY_NAME    := drogonsec
 VERSION        := 0.1.0
 BUILD_TIME     := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT     := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-LDFLAGS        := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT)"
+LDFLAGS        := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT) $(EXTRA_LDFLAGS)"
 GO             := go
 GOFLAGS        :=
 BUILD_DIR      := ./bin
