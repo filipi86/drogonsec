@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ DrogonSec Security Scanner
+# 🛡️ Drogonsec Security Scanner
 
 [![CI/CD](https://github.com/filipi86/drogonsec/actions/workflows/ci.yml/badge.svg)](https://github.com/filipi86/drogonsec/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
