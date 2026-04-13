@@ -110,7 +110,7 @@ drogonsec/
 
 ## Credits & Acknowledgements
 
-- **Created by:** [Filipi Pires](https://github.com/filipi86) — Head of Identity Threat Labs, Global Threat Researcher, Cybersecurity Advocate, Instructor, Speaker and Writer about Malware Hunting
+- **Created by:** [Filipi Pires](https://github.com/filipi86) — Head of Tecnical Advocacy, Global Threat Researcher, Cybersecurity Advocate, Instructor, Speaker and Writer about Malware Hunting
 
 - **Maintained by:** [CROSS-INTEL](https://cross-intel.com)
 
