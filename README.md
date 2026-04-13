@@ -272,7 +272,7 @@ Apache License 2.0 — See [LICENSE](LICENSE)
 
 ## Credits
 
-Inspired by Horusec. DragonSec is its modern, actively maintained, and updated with enhanced capabilities.
+Inspired by Horusec. DrogonSec is its modern, actively maintained, and updated with enhanced capabilities.
 
 Built with: Go, Cobra, Viper, go-git.
 
