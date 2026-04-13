@@ -25,7 +25,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25.9'
           cache: true
 
       - name: Download dependencies
@@ -67,12 +67,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25.9'
           cache: true
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
-          version: latest
+          version: v2.0.0
 
   # ============ SECURITY SCAN (Dogfooding - DragonSec scanning itself) ============
   security-scan:
@@ -83,7 +83,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25.9'
           cache: true
 
       - name: Build DragonSec
@@ -114,7 +114,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.25.9'
 
       - name: Build all platforms
         run: make release

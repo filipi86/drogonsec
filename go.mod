@@ -1,6 +1,6 @@
 module github.com/filipi86/drogonsec
 
-go 1.25.0
+go 1.25.9
 
 require (
 	github.com/fatih/color v1.19.0
