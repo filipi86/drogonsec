@@ -258,7 +258,7 @@ func buildPrompt(f analyzer.Finding) string {
 		sb.WriteString("\n```\n\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("**File:** %s (line %d)\n\n", f.File, f.Line))
+	fmt.Fprintf(&sb, "**File:** %s (line %d)\n\n", f.File, f.Line)
 	sb.WriteString("Please provide:\n")
 	sb.WriteString("1. Why this vulnerability is dangerous in this specific context\n")
 	sb.WriteString("2. A corrected code example\n")
