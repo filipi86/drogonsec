@@ -2,7 +2,7 @@
 # Multi-stage build for minimal final image
 
 # ============ BUILD STAGE ============
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.9-alpine AS builder
 
 # ENVIRONMENT is injected by CI (production | staging | development).
 # Defaults to production for plain `docker build .` invocations.
@@ -23,12 +23,12 @@ COPY . .
 # Build static binary with environment branding
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
-    -ldflags="-w -s -extldflags '-static' -X github.com/drogonsec/drogonsec/internal/cli.Environment=${ENVIRONMENT}" \
+    -ldflags="-w -s -extldflags '-static' -X github.com/filipi86/drogonsec/internal/cli.Environment=${ENVIRONMENT}" \
     -o /build/drogonsec \
-    ./cmd/drogonsec/main.go
+    ./cmd/drogonsec
 
 # ============ FINAL STAGE ============
-FROM alpine:3.19
+FROM alpine:3.21
 
 # Security: don't run as root
 RUN addgroup -g 1001 drogonsec && \
