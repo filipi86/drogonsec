@@ -14,20 +14,12 @@ linters:
     - gofmt
   disable:
     - errcheck   # viper.BindPFlag / progress bar errors are non-critical
-
-linters-settings:
-  govet:
-    enable-all: false
-  staticcheck:
-    checks: ["all", "-SA1006", "-SA1019"]
+  settings:
+    govet:
+      enable-all: false
+    staticcheck:
+      checks: ["all", "-SA1006", "-SA1019"]
 
 issues:
-  exclude-rules:
-    # Ignore test files for some rules
-    - path: _test\.go
-      linters:
-        - gosimple
-        - staticcheck
-  # Max issues to display
   max-issues-per-linter: 50
   max-same-issues: 5
