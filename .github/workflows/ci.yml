@@ -31,6 +31,14 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Verify module checksums
+        run: go mod verify
+
+      - name: Scan for known CVEs (govulncheck)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
       - name: Run go vet
         run: go vet ./...
 
