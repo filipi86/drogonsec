@@ -483,7 +483,7 @@ func (d *Detector) loadRules() {
 		{
 			ID:          "LEAK-120",
 			Name:        "Hardcoded Password",
-			Pattern:     mustCompile(`(?i)(password|passwd|pwd|pass)\s*[:=]\s*["'][^"']{4,}["']`),
+			Pattern:     mustCompile(`(?i)(?:^|[^.\w])(password|passwd|pwd|pass)\s*[:=]\s*["'][^"']{4,}["']`),
 			Severity:    config.SeverityHigh,
 			Confidence:  "MEDIUM",
 			Description: "Hardcoded password detected. Should be stored in a secrets manager.",
