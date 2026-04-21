@@ -11,7 +11,8 @@
 
 </div>
 
-<img width="1099" height="404" alt="image" src="https://github.com/user-attachments/assets/500be7b6-98ca-43b1-a580-fba6bf32adde" />
+<img width="1099" height="398" alt="image" src="https://github.com/user-attachments/assets/d6b8efb1-7fe4-4c25-9f20-1a430d4a769c" />
+
 
 > An open-source, comprehensive security scanner combining SAST, SCA, and secret detection aligned with OWASP Top 10:2025 — created for intelligent remediation.
 
