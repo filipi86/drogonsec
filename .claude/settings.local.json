@@ -51,7 +51,20 @@
       "Bash(gofmt -d /Users/thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_javascript.go)",
       "Bash(gofmt -d /Users/thor/Documents/THOR/DrogonSec/drogonsec/internal/engine/rules_java.go)",
       "Bash(gofmt -w internal/sca/osv.go internal/sca/engine.go internal/engine/rules_python.go internal/engine/rules_javascript.go internal/engine/rules_java.go)",
-      "Bash(go vet ./...)"
+      "Bash(go vet ./...)",
+      "Bash(make lint:*)",
+      "Bash(golangci-lint version:*)",
+      "Bash(make build:*)",
+      "Bash(gofmt -w /Users/thor/Documents/THOR/DrogonSec/drogonsec/internal/config/config.go)",
+      "Bash(golangci-lint run:*)",
+      "Bash(grep -E \"\\\\.\\(go|md\\)$\")",
+      "Bash(find /Users/thor/Documents/THOR/DrogonSec/drogonsec -name \"*.go\" -type f -exec grep -l \"yaml\\\\|viper\" {} \\\\;)",
+      "Bash(]*\\\\`)",
+      "Bash(grep -o \"mustCompile\\(\\\\`[^`]*\\\\`\\)\")",
+      "Bash(gh issue *)",
+      "Bash(go doc *)",
+      "Bash(gh pr *)",
+      "Bash(wait)"
     ]
   }
 }
