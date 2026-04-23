@@ -141,7 +141,7 @@ func runMonitor(_ *cobra.Command, _ []string) error {
 	if monMode == "webhook" && webhookSecret == "" {
 		return fmt.Errorf("WEBHOOK_SECRET env var is required in webhook mode\n\n" +
 			"  Generate one: export WEBHOOK_SECRET=$(openssl rand -hex 32)\n" +
-			"  Then configure the same value in your repo's webhook settings.")
+			"  Then configure the same value in your repo's webhook settings")
 	}
 
 	// ── Input validation ─────────────────────────────────────────────────────
@@ -153,6 +153,16 @@ func runMonitor(_ *cobra.Command, _ []string) error {
 	}
 	if monPlatform != "github" && monPlatform != "gitlab" {
 		return fmt.Errorf("unknown platform %q — must be 'github' or 'gitlab'", monPlatform)
+	}
+
+	// SSRF health check: confirm the platform API host is in the allowlist and
+	// does not resolve to a private/loopback address before any network I/O.
+	apiHost, err := monitor.APIHostForPlatform(monPlatform)
+	if err != nil {
+		return err
+	}
+	if err := monitor.ValidateAPIHost(apiHost); err != nil {
+		return err
 	}
 	if monMode != "webhook" && monMode != "poll" {
 		return fmt.Errorf("unknown mode %q — must be 'webhook' or 'poll'", monMode)

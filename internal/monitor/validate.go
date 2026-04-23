@@ -49,9 +49,21 @@ var allowedAPIHosts = map[string]bool{
 	"gitlab.com":     true,
 }
 
-// validateAPIHost blocks SSRF by verifying the resolved hostname is in the
+// APIHostForPlatform returns the canonical API hostname for a supported platform.
+func APIHostForPlatform(platform string) (string, error) {
+	switch platform {
+	case "github":
+		return "api.github.com", nil
+	case "gitlab":
+		return "gitlab.com", nil
+	default:
+		return "", fmt.Errorf("unknown platform %q", platform)
+	}
+}
+
+// ValidateAPIHost blocks SSRF by verifying the resolved hostname is in the
 // platform allowlist and does not resolve to a private/loopback address.
-func validateAPIHost(host string) error {
+func ValidateAPIHost(host string) error {
 	if !allowedAPIHosts[host] {
 		return fmt.Errorf("API host %q is not in the approved platform list", host)
 	}
