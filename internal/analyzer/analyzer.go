@@ -364,11 +364,8 @@ func (a *Analyzer) printSummary(result *ScanResult) {
 }
 
 func summaryRepeat(ch string, n int) string {
-	out := ""
-	for i := 0; i < n; i++ {
-		out += ch
-	}
-	return out
+	// strings.Repeat is O(n) via a single allocation; += in a loop is O(n²).
+	return strings.Repeat(ch, n)
 }
 
 func printSeverityBar(label string, count int, c *color.Color, char string) {
