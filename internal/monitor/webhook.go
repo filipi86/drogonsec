@@ -128,6 +128,14 @@ func (s *webhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 
 	go func() {
+		// A panic inside scanFn must not crash the webhook server — the
+		// server is long-lived and may receive many events concurrently.
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("  %s Scan panic on branch %q: %v\n",
+					color.RedString("✗"), branch, r)
+			}
+		}()
 		if err := s.scanFn(branch); err != nil {
 			fmt.Printf("  %s Scan error on branch %q: %v\n",
 				color.RedString("✗"), branch, err)

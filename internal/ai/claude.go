@@ -2,6 +2,7 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -341,7 +342,11 @@ func (c *Client) callCloud(prompt, system string, tokens int) (string, error) {
 		return "", fmt.Errorf("marshal error: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.cfg.Endpoint, bytes.NewReader(body))
+	// context.Background() allows the http.Client Timeout to remain the sole
+	// deadline — callers do not yet pass a context, but using
+	// NewRequestWithContext makes future propagation trivial without changing
+	// the call sites again.
+	req, err := http.NewRequestWithContext(context.Background(), "POST", c.cfg.Endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("request creation error: %w", err)
 	}
@@ -394,7 +399,9 @@ func (c *Client) callOllama(prompt, system string, tokens int) (string, error) {
 		return "", fmt.Errorf("marshal error: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.cfg.Endpoint, bytes.NewReader(body))
+	// context.Background() mirrors the callCloud approach — the http.Client
+	// Timeout is the effective deadline for local Ollama calls.
+	req, err := http.NewRequestWithContext(context.Background(), "POST", c.cfg.Endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("request creation error: %w", err)
 	}

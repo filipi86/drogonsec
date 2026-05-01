@@ -187,9 +187,12 @@ func buildSnippet(lines []string, lineNum, context int) string {
 // mustCompile compiles regex or returns a never-matching pattern on error.
 // The fallback uses [^\s\S] because `$^` still matches empty strings (blank
 // lines), which caused false positives for rules with invalid regex.
+// Invalid patterns are logged to stderr so rule authors are not left
+// wondering why a custom rule silently produces zero findings.
 func mustCompile(pattern string) *regexp.Regexp {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "  ⚠  invalid rule pattern (rule disabled): %v\n", err)
 		return regexp.MustCompile(`[^\s\S]`) // truly never matches
 	}
 	return re
