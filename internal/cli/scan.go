@@ -240,7 +240,10 @@ func runScan(cmd *cobra.Command, args []string) error {
 	// Exit code based on vulnerabilities found
 	if result.HasCritical() || result.HasHigh() {
 		if outputFile != "" {
-			color.Red("\n⚠  High/Critical vulnerabilities found. Check report: %s\n", outputFile)
+			// Printf-style formatting requires the color object's Printf method —
+			// the package-level color.Red is a PrintFunc (Fprint-based) and does
+			// not interpolate format verbs, so %s would be printed literally.
+			color.New(color.FgRed).Printf("\n⚠  High/Critical vulnerabilities found. Check report: %s\n", outputFile)
 		}
 		os.Exit(1)
 	}

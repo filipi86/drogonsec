@@ -2,6 +2,38 @@ package reporter
 
 import "testing"
 
+func TestSarifStartLine(t *testing.T) {
+	cases := []struct {
+		in, want int
+	}{
+		{0, 1},   // SARIF requires startLine >= 1; unknown becomes 1
+		{-5, 1},  // defensive: negatives clamped
+		{1, 1},
+		{42, 42},
+	}
+	for _, tc := range cases {
+		if got := sarifStartLine(tc.in); got != tc.want {
+			t.Errorf("sarifStartLine(%d) = %d, want %d", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestSarifStartColumn(t *testing.T) {
+	cases := []struct {
+		in, want int
+	}{
+		{0, 0},   // unknown → omitted via omitempty
+		{-3, 0},  // negative → omitted (no fabricated column)
+		{1, 1},
+		{17, 17},
+	}
+	for _, tc := range cases {
+		if got := sarifStartColumn(tc.in); got != tc.want {
+			t.Errorf("sarifStartColumn(%d) = %d, want %d", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestSafeURL(t *testing.T) {
 	cases := []struct {
 		name string
