@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/fatih/color"
@@ -127,12 +128,25 @@ func (s *webhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	// 7. Accept immediately, run scan in background.
 	w.WriteHeader(http.StatusAccepted)
 
-	go func() {
-		if err := s.scanFn(branch); err != nil {
-			fmt.Printf("  %s Scan error on branch %q: %v\n",
-				color.RedString("✗"), branch, err)
+	go s.runScan(branch)
+}
+
+// runScan invokes scanFn for the given branch and guarantees the goroutine
+// cannot crash the long-lived webhook server. Panics are recovered, logged
+// with a stack trace for post-mortem, and otherwise swallowed so a malformed
+// or malicious event payload cannot terminate the process (availability
+// concern: the webhook endpoint accepts untrusted input).
+func (s *webhookServer) runScan(branch string) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("  %s Scan panic on branch %q: %v\n%s\n",
+				color.RedString("✗"), branch, r, debug.Stack())
 		}
 	}()
+	if err := s.scanFn(branch); err != nil {
+		fmt.Printf("  %s Scan error on branch %q: %v\n",
+			color.RedString("✗"), branch, err)
+	}
 }
 
 func (s *webhookServer) handleHealth(w http.ResponseWriter, r *http.Request) {

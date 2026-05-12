@@ -532,7 +532,7 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
-					Region:           sarifRegion{StartLine: f.Line, StartColumn: f.Column},
+					Region:           sarifRegion{StartLine: sarifStartLine(f.Line), StartColumn: sarifStartColumn(f.Column)},
 				},
 			}},
 		})
@@ -561,7 +561,7 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
-					Region:           sarifRegion{StartLine: f.Line},
+					Region:           sarifRegion{StartLine: sarifStartLine(f.Line)},
 				},
 			}},
 		})
@@ -595,6 +595,29 @@ func sarifLevel(s config.Severity) string {
 	default:
 		return "note"
 	}
+}
+
+// sarifStartLine clamps a line number to the minimum valid value for SARIF (1).
+// The SARIF 2.1 spec requires startLine >= 1; a zero value produced by a
+// finding with an unknown position would generate an invalid SARIF document
+// that GitHub's Security tab and other consumers reject.
+func sarifStartLine(line int) int {
+	if line < 1 {
+		return 1
+	}
+	return line
+}
+
+// sarifStartColumn normalises a column number for SARIF emission.
+// The SARIF 2.1 spec requires startColumn >= 1 when present. Because the
+// JSON tag carries `omitempty`, returning 0 omits the field — preferable
+// to fabricating column 1 when the finding has no column information.
+// Negative values (defensive) are likewise normalised to 0.
+func sarifStartColumn(col int) int {
+	if col < 1 {
+		return 0
+	}
+	return col
 }
 
 // ============= HTML REPORTER =============
