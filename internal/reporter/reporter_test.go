@@ -6,8 +6,8 @@ func TestSarifStartLine(t *testing.T) {
 	cases := []struct {
 		in, want int
 	}{
-		{0, 1},   // SARIF requires startLine >= 1; unknown becomes 1
-		{-5, 1},  // defensive: negatives clamped
+		{0, 1},  // SARIF requires startLine >= 1; unknown becomes 1
+		{-5, 1}, // defensive: negatives clamped
 		{1, 1},
 		{42, 42},
 	}
@@ -22,8 +22,8 @@ func TestSarifStartColumn(t *testing.T) {
 	cases := []struct {
 		in, want int
 	}{
-		{0, 0},   // unknown → omitted via omitempty
-		{-3, 0},  // negative → omitted (no fabricated column)
+		{0, 0},  // unknown → omitted via omitempty
+		{-3, 0}, // negative → omitted (no fabricated column)
 		{1, 1},
 		{17, 17},
 	}
