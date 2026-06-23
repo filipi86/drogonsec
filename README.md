@@ -322,7 +322,9 @@ Contributions are welcome! Areas to contribute:
 - Documentation
 - Bug fixes
 
-See [CONTRIBUTING](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING](CONTRIBUTING.md) for guidelines. All participants are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+To report a security vulnerability, please follow our [Security Policy](SECURITY.md) — do not open a public issue.
 
 ---
 

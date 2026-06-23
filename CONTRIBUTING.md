@@ -42,7 +42,9 @@ Read the full [CLA document](./CLA.md) before signing.
 
 ## Code of Conduct
 
-This project follows a **Contributor Covenant** approach. Be respectful, inclusive, and constructive. Harassment, discrimination, or bad-faith contributions will not be tolerated.
+This project adopts the [Contributor Covenant](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold it. Be respectful, inclusive, and constructive. Harassment, discrimination, or bad-faith contributions will not be tolerated. Report unacceptable behavior as described in the [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+To report a **security vulnerability**, do not open a public issue — follow the private process in our [Security Policy](./SECURITY.md).
 
 ---
 
