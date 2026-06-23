@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  packages: write          # Required for GHCR Docker push
 
 jobs:
   # ============ BUILD & TEST ============
