@@ -142,6 +142,21 @@ Drogonsec Security Scanner
     sarif_file: results.sarif
 ```
 
+### CycloneDX SBOM
+
+Export a [CycloneDX](https://cyclonedx.org) 1.5 Software Bill of Materials of the
+dependencies discovered by the SCA engine. The output is consumable by tools
+like Grype, Trivy, and Dependency-Track.
+
+```bash
+drogonsec scan . --format cyclonedx --output sbom.json
+```
+
+> **Note:** the SBOM is a flat component inventory with Package URLs (purls). It
+> does not yet express the transitive dependency graph, because the SCA engine
+> resolves manifests rather than full lockfiles. Transitive resolution and SPDX
+> output are planned for a later release.
+
 ---
 
 ## Configuration

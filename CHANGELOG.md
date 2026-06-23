@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CycloneDX SBOM export** (`--format cyclonedx`): emits a CycloneDX 1.5 JSON
+  Software Bill of Materials of the dependencies discovered by the SCA engine,
+  with Package URLs (purls) per ecosystem (npm, pypi, golang, maven, gem,
+  composer, pub). Flat component inventory, deduplicated and consumable by
+  Grype, Trivy, and Dependency-Track. Transitive graph and SPDX output are
+  planned for a later release. ([#31](https://github.com/filipi86/drogonsec/issues/31))
+
 ## [0.1.0] - 2026-06-23
 
 First public release of DrogonSec, a high-performance open-source security
