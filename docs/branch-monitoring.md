@@ -370,7 +370,7 @@ jobs:
 | `--tls-cert` | — | PEM certificate for HTTPS |
 | `--tls-key` | — | PEM private key for HTTPS |
 | `--interval` | `5m` | Poll interval (min `30s`) |
-| `--format` | `text` | `text`, `json`, `sarif`, `html` |
+| `--format` | `text` | `text`, `json`, `sarif`, `html`, `cyclonedx` |
 | `--output` | stdout | Base path for report files |
 | `--severity` | `LOW` | Minimum severity to report |
 | `--workers` | `4` | Parallel scan workers |

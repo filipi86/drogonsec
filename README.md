@@ -320,7 +320,7 @@ drogonsec/
 │   ├── engine/         # SAST rules engine (20+ languages)
 │   ├── leaks/          # Secret detection engine
 │   ├── sca/            # Dependency analysis engine
-│   ├── reporter/       # Text/JSON/SARIF/HTML reporters
+│   ├── reporter/       # Text/JSON/SARIF/HTML/CycloneDX reporters
 │   ├── ai/             # AI remediation engine (Ollama + Cloud)
 │   └── config/         # Types and configuration
 └── rules/              # YAML rule definitions (community-extensible)

@@ -86,7 +86,7 @@ func init() {
 	monitorCmd.Flags().StringVar(&monInterval, "interval", "5m", "polling interval: e.g. 30s, 5m, 1h (min: 30s)")
 
 	// Scan output flags (mirrors scan command for familiarity).
-	monitorCmd.Flags().StringVarP(&monFmt, "format", "f", "text", "output format: text, json, sarif, html")
+	monitorCmd.Flags().StringVarP(&monFmt, "format", "f", "text", "output format: text, json, sarif, html, cyclonedx")
 	monitorCmd.Flags().StringVarP(&monOutput, "output", "o", "", "output file base path (branch + timestamp appended per scan)")
 	monitorCmd.Flags().StringVar(&monSeverity, "severity", "LOW", "minimum severity to report: LOW, MEDIUM, HIGH, CRITICAL")
 	monitorCmd.Flags().IntVar(&monWorkers, "workers", 4, "number of parallel scan workers")
