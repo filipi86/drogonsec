@@ -43,6 +43,16 @@ type SCAFinding struct {
 	OWASP          config.OWASPCategory `json:"owasp"`
 }
 
+// Dependency represents a single component discovered by the SCA engine.
+// It is the inventory used to produce an SBOM, independent of whether the
+// component is vulnerable.
+type Dependency struct {
+	Name      string `json:"name"`
+	Version   string `json:"version"`
+	Ecosystem string `json:"ecosystem"`
+	Manifest  string `json:"manifest"`
+}
+
 // LeakFinding represents a detected secret or credential leak
 type LeakFinding struct {
 	Type          string          `json:"type"` // "AWS Key", "GitHub Token", etc.
@@ -70,6 +80,10 @@ type ScanResult struct {
 	SASTFindings []Finding     `json:"sast_findings"`
 	SCAFindings  []SCAFinding  `json:"sca_findings"`
 	LeakFindings []LeakFinding `json:"leak_findings"`
+
+	// Dependencies is the full SCA component inventory (all dependencies,
+	// not only vulnerable ones), used to generate an SBOM.
+	Dependencies []Dependency `json:"dependencies,omitempty"`
 
 	// Statistics
 	Stats ScanStats `json:"stats"`

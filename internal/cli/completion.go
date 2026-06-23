@@ -247,6 +247,7 @@ var (
 		"json\tmachine-readable report",
 		"sarif\tGitHub / Azure DevOps Security upload",
 		"html\tstandalone styled report",
+		"cyclonedx\tCycloneDX 1.5 SBOM (JSON)",
 	}
 	completionAIProvider = []string{
 		"ollama\tlocal, free, no API key (default when Ollama is running)",

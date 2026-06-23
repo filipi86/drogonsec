@@ -50,8 +50,10 @@ func New(format string) (Reporter, error) {
 		return &SARIFReporter{}, nil
 	case "html":
 		return &HTMLReporter{}, nil
+	case "cyclonedx":
+		return &CycloneDXReporter{}, nil
 	default:
-		return nil, fmt.Errorf("unknown format: %s (use: text, json, sarif, html)", format)
+		return nil, fmt.Errorf("unknown format: %s (use: text, json, sarif, html, cyclonedx)", format)
 	}
 }
 

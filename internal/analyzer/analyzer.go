@@ -284,6 +284,17 @@ func (a *Analyzer) runSCA(result *ScanResult) error {
 		return err
 	}
 
+	// Record the full component inventory for SBOM generation (all
+	// dependencies, not just the vulnerable ones surfaced as findings).
+	for _, d := range scaEngine.Dependencies() {
+		result.Dependencies = append(result.Dependencies, Dependency{
+			Name:      d.Name,
+			Version:   d.Version,
+			Ecosystem: d.Ecosystem,
+			Manifest:  d.File,
+		})
+	}
+
 	minWeight := config.Severity(a.cfg.MinSeverity).Weight()
 	for _, f := range findings {
 		sf := SCAFinding(f)

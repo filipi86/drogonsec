@@ -45,6 +45,7 @@ type ManifestParser interface {
 type Engine struct {
 	targetPath string
 	parsers    []ManifestParser
+	lastDeps   []Dependency
 }
 
 // New creates a new SCA Engine
@@ -73,6 +74,9 @@ func (e *Engine) Analyze() ([]Finding, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dependency collection failed: %w", err)
 	}
+	// Retain the full inventory so callers can build an SBOM (all components,
+	// not only the vulnerable ones) without re-walking the tree.
+	e.lastDeps = deps
 
 	if len(deps) == 0 {
 		return nil, nil
@@ -89,6 +93,13 @@ func (e *Engine) Analyze() ([]Finding, error) {
 	}
 
 	return findings, nil
+}
+
+// Dependencies returns the full set of dependencies discovered by the most
+// recent Analyze call. It is the component inventory used to build an SBOM,
+// independent of whether each dependency is vulnerable.
+func (e *Engine) Dependencies() []Dependency {
+	return e.lastDeps
 }
 
 // collectDependencies finds and parses all manifest files

@@ -59,7 +59,7 @@ Examples:
 }
 
 func init() {
-	scanCmd.Flags().StringVarP(&outputFormat, "format", "f", "text", "output format: text, json, sarif, html")
+	scanCmd.Flags().StringVarP(&outputFormat, "format", "f", "text", "output format: text, json, sarif, html, cyclonedx")
 	scanCmd.Flags().StringVarP(&outputFile, "output", "o", "", "output file path (default: stdout)")
 	scanCmd.Flags().StringSliceVar(&ignorePaths, "ignore", []string{}, "paths to ignore (comma-separated)")
 	scanCmd.Flags().BoolVar(&enableAI, "enable-ai", false, "enable AI-powered remediation suggestions")
