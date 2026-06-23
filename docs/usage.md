@@ -88,7 +88,7 @@ Always pass your API key via `AI_API_KEY` environment variable.
 
 ## Output Formats
 
-Drogonsec supports four output formats, suited for different workflows:
+Drogonsec supports five output formats, suited for different workflows:
 
 | Format | Flag | Use Case |
 |---|---|---|
@@ -96,6 +96,7 @@ Drogonsec supports four output formats, suited for different workflows:
 | JSON | `--format json` | SIEM, automation, further processing |
 | HTML | `--format html` | Shareable reports, management presentations |
 | SARIF | `--format sarif` | GitHub Security tab, Azure DevOps |
+| CycloneDX | `--format cyclonedx` | SBOM for Grype, Trivy, Dependency-Track |
 
 ```bash
 # JSON report
@@ -106,7 +107,53 @@ drogonsec scan . --format html --output report.html
 
 # SARIF for GitHub Security integration
 drogonsec scan . --format sarif --output results.sarif
+
+# CycloneDX SBOM (Software Bill of Materials)
+drogonsec scan . --format cyclonedx --output sbom.json
 ```
+
+> **Tip:** for machine formats (`json`, `sarif`, `cyclonedx`) always pass
+> `--output`, so the scan's progress output stays on the terminal and the file
+> receives only the clean document.
+
+### CycloneDX SBOM
+
+The `cyclonedx` format exports a [CycloneDX](https://cyclonedx.org) 1.5 JSON
+Software Bill of Materials of the dependencies discovered by the SCA engine. Each
+dependency becomes a component with a Package URL (purl), so the output is
+directly consumable by Grype, Trivy, and Dependency-Track.
+
+Supported ecosystems and their purl types: npm, pypi, golang, maven, gem
+(rubygems), composer (packagist), pub.
+
+```bash
+drogonsec scan . --format cyclonedx --output sbom.json
+```
+
+Example output (truncated):
+
+```json
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:cadae14d-aa47-44...",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-23T12:00:00Z",
+    "tools": { "components": [ { "type": "application", "name": "DrogonSec Security Scanner", "version": "0.1.0" } ] },
+    "component": { "type": "application", "name": "myproject" }
+  },
+  "components": [
+    { "type": "library", "bom-ref": "pkg:npm/lodash@4.17.15", "name": "lodash", "version": "4.17.15", "purl": "pkg:npm/lodash@4.17.15" }
+  ]
+}
+```
+
+> **Scope:** the SBOM is a flat component inventory. The SCA engine resolves
+> manifests rather than full lockfiles, so the transitive dependency graph is
+> not yet expressed. Transitive resolution and SPDX output are planned for a
+> later release. The SBOM is derived from the SCA engine, so do not combine it
+> with `--no-sca`.
 
 ---
 

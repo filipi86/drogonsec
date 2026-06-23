@@ -53,6 +53,7 @@ Inspired by Horusec, Drogonsec is its modern, actively maintained successor with
 - **CWE** — Common Weakness Enumeration mapping on every finding
 - **CVSS 3.1** — Severity scoring for accurate risk prioritization
 - **SARIF 2.1** — Native integration with GitHub Security and Azure DevOps
+- **CycloneDX 1.5** — SBOM export for Grype, Trivy, and Dependency-Track
 
 ---
 
@@ -89,7 +90,7 @@ drogonsec/
 │   ├── engine/             # SAST rules engine (20+ languages)
 │   ├── leaks/              # Secret detection engine
 │   ├── sca/                # Dependency analysis engine
-│   ├── reporter/           # Text / JSON / SARIF / HTML reporters
+│   ├── reporter/           # Text / JSON / SARIF / HTML / CycloneDX reporters
 │   ├── ai/                 # AI remediation (Ollama OSS + Cloud)
 │   └── config/             # Types and configuration
 └── rules/                  # YAML rule definitions (community-extensible)

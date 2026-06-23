@@ -108,7 +108,7 @@ Auto-detecting a local Ollama requires more than `HTTP 200` on port `11434` — 
 
 ## Report Output Permissions
 
-When `--output <file>` is used for `text`, `json`, `sarif`, or `html` reports, the file is created with mode `0600` (user-only). Reports embed vulnerable code snippets, matched secrets, and AI remediation text; on shared CI runners or workstations they should not be world-readable by default. If you need the report to be readable by other accounts, adjust the permissions after generation.
+When `--output <file>` is used for `text`, `json`, `sarif`, `html`, or `cyclonedx` reports, the file is created with mode `0600` (user-only). Reports embed vulnerable code snippets, matched secrets, and AI remediation text; on shared CI runners or workstations they should not be world-readable by default. If you need the report to be readable by other accounts, adjust the permissions after generation.
 
 ---
 

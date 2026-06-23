@@ -107,6 +107,21 @@ CVSS     : 7.5
 OWASP    : A03:2025 - Software Supply Chain Failures
 ```
 
+### SBOM Export (CycloneDX)
+
+The dependency inventory the SCA engine builds can be exported as a
+[CycloneDX](https://cyclonedx.org) 1.5 Software Bill of Materials, so it can be
+consumed by Grype, Trivy, and Dependency-Track:
+
+```bash
+drogonsec scan . --format cyclonedx --output sbom.json
+```
+
+Each dependency becomes a CycloneDX component with a Package URL (purl). The v1
+SBOM is a flat component list; the transitive dependency graph and SPDX output
+are planned for a later release. See [Usage → Output Formats](usage.md#output-formats)
+for details.
+
 ---
 
 ## Leaks Engine — Secret Detection
