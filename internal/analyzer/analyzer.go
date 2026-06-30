@@ -145,6 +145,35 @@ func (a *Analyzer) collectFiles() ([]string, error) {
 }
 
 // runSAST executes the SAST engine on collected files
+// secretFamilyRules are the hardcoded-secret/credential rules whose findings
+// are demoted (not dropped) when they occur in a test/fixture file.
+var secretFamilyRules = map[string]bool{
+	"PY-003": true, "PHP-006": true, "JS-004": true,
+	"JAVA-003": true, "KT-001": true, "TF-001": true, "GEN-001": true,
+}
+
+// controlCheckRules are the file-scoped "missing hardening control" rules,
+// demoted to INFO in test/example paths where they are pure noise.
+var controlCheckRules = map[string]bool{
+	"JS-011": true, "JS-016": true, "HTML-002": true,
+}
+
+// isTestPath reports whether a path looks like test or fixture code, where
+// hardcoded credentials are expected throwaway values rather than real leaks.
+func isTestPath(p string) bool {
+	lp := strings.ToLower(filepath.ToSlash(p))
+	for _, seg := range []string{"/test/", "/tests/", "/spec/", "/specs/", "/__tests__/", "/fixtures/", "/testdata/"} {
+		if strings.Contains(lp, seg) {
+			return true
+		}
+	}
+	base := filepath.Base(lp)
+	return strings.HasPrefix(base, "test_") || strings.HasPrefix(base, "test.") ||
+		strings.Contains(base, "_test.") || strings.Contains(base, ".test.") ||
+		strings.Contains(base, "_spec.") || strings.Contains(base, ".spec.") ||
+		strings.Contains(base, "test.") // e.g. FooTest.php -> footest.php
+}
+
 func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 	bar := progressbar.NewOptions(len(files),
 		progressbar.OptionSetDescription("  SAST"),
@@ -202,6 +231,20 @@ func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 	// Collect findings
 	minWeight := config.Severity(a.cfg.MinSeverity).Weight()
 	for f := range findingCh {
+		// Test-aware demotion (never drops — only lowers severity):
+		//  - a hardcoded secret in a test file is a throwaway value, not a real
+		//    leak → LOW (still visible at --severity LOW for audit);
+		//  - a "missing hardening control" hint (helmet/CSRF/CSP) in a test or
+		//    example app is noise → INFO (below the default LOW tier).
+		if isTestPath(f.File) {
+			if controlCheckRules[f.RuleID] && f.Severity.Weight() > config.SeverityInfo.Weight() {
+				f.Severity = config.SeverityInfo
+				f.Description = "[test file] " + f.Description + " — test/example path; downgraded to INFO."
+			} else if secretFamilyRules[f.RuleID] && f.Severity.Weight() > config.SeverityLow.Weight() {
+				f.Severity = config.SeverityLow
+				f.Description = "[test file] " + f.Description + " — test/fixture path; downgraded to LOW."
+			}
+		}
 		if f.Severity.Weight() >= minWeight {
 			a.mu.Lock()
 			result.AddSASTFinding(f)

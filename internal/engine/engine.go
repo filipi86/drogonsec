@@ -52,6 +52,17 @@ type Rule struct {
 	CVSS        float64
 	References  []string
 	Remediation string
+
+	// FileScoped rules are evaluated once against the whole file instead of
+	// line-by-line. Used for "missing security control" checks (e.g. an HTML
+	// document without a CSP, an Express app file without Helmet) that cannot
+	// be decided from a single line. The finding is reported once, at the line
+	// of the first Pattern match.
+	FileScoped bool
+	// RequiredPattern, on a FileScoped rule, is the marker of the control that
+	// SHOULD be present. The rule fires only when Pattern matches somewhere in
+	// the file AND RequiredPattern does NOT — i.e. the control is missing.
+	RequiredPattern *regexp.Regexp
 }
 
 // Engine is the SAST analysis engine
@@ -103,6 +114,20 @@ func (e *Engine) Analyze(filePath string) []Finding {
 			continue
 		}
 
+		// File-scoped "missing control" rules: evaluate the whole file once.
+		if rule.FileScoped {
+			loc := rule.Pattern.FindIndex(content)
+			if loc == nil {
+				continue // trigger not present
+			}
+			if rule.RequiredPattern != nil && rule.RequiredPattern.Match(content) {
+				continue // the control IS present — nothing to report
+			}
+			lineNum := 1 + strings.Count(string(content[:loc[0]]), "\n")
+			findings = append(findings, buildFinding(rule, lang, filePath, lines, lineNum))
+			continue
+		}
+
 		scanner := bufio.NewScanner(strings.NewReader(string(content)))
 		lineNum := 0
 		for scanner.Scan() {
@@ -113,32 +138,38 @@ func (e *Engine) Analyze(filePath string) []Finding {
 				if rule.AntiPattern != nil && rule.AntiPattern.MatchString(line) {
 					continue
 				}
-				col := findColumn(line, rule.Pattern)
-				snippet := buildSnippet(lines, lineNum, 3)
-
-				findings = append(findings, Finding{
-					ID:          fmt.Sprintf("%s-%s-%d", rule.ID, filepath.Base(filePath), lineNum),
-					Type:        config.FindingTypeSAST,
-					Language:    lang,
-					Severity:    rule.Severity,
-					Title:       rule.Title,
-					Description: rule.Description,
-					File:        filePath,
-					Line:        lineNum,
-					Column:      col,
-					Code:        snippet,
-					RuleID:      rule.ID,
-					OWASP:       rule.OWASP,
-					CWE:         rule.CWE,
-					CVSS:        rule.CVSS,
-					References:  rule.References,
-					Remediation: rule.Remediation,
-				})
+				findings = append(findings, buildFinding(rule, lang, filePath, lines, lineNum))
 			}
 		}
 	}
 
 	return findings
+}
+
+// buildFinding assembles a Finding for a rule match at the given 1-based line.
+func buildFinding(rule Rule, lang config.Language, filePath string, lines []string, lineNum int) Finding {
+	line := ""
+	if lineNum-1 >= 0 && lineNum-1 < len(lines) {
+		line = lines[lineNum-1]
+	}
+	return Finding{
+		ID:          fmt.Sprintf("%s-%s-%d", rule.ID, filepath.Base(filePath), lineNum),
+		Type:        config.FindingTypeSAST,
+		Language:    lang,
+		Severity:    rule.Severity,
+		Title:       rule.Title,
+		Description: rule.Description,
+		File:        filePath,
+		Line:        lineNum,
+		Column:      findColumn(line, rule.Pattern),
+		Code:        buildSnippet(lines, lineNum, 3),
+		RuleID:      rule.ID,
+		OWASP:       rule.OWASP,
+		CWE:         rule.CWE,
+		CVSS:        rule.CVSS,
+		References:  rule.References,
+		Remediation: rule.Remediation,
+	}
 }
 
 // loadAllRules registers all built-in detection rules
@@ -153,6 +184,12 @@ func (e *Engine) loadAllRules() {
 	e.rules = append(e.rules, shellRules()...)
 	e.rules = append(e.rules, terraformRules()...)
 	e.rules = append(e.rules, kubernetesRules()...)
+	e.rules = append(e.rules, elixirRules()...)
+	e.rules = append(e.rules, cRules()...)
+	e.rules = append(e.rules, swiftRules()...)
+	e.rules = append(e.rules, dartRules()...)
+	e.rules = append(e.rules, erlangRules()...)
+	e.rules = append(e.rules, nginxRules()...)
 	e.rules = append(e.rules, htmlRules()...)
 	e.rules = append(e.rules, genericRules()...)
 }

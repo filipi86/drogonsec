@@ -51,8 +51,12 @@ func pythonRules() []Rule {
 			Description: "Hardcoded credentials in source code expose sensitive data and are " +
 				"easily discovered through code review or repository searches.",
 			Pattern: mustCompile(`(?i)(password|passwd|secret|api_key|apikey|token)\s*=\s*["'][^"']{4,}["']`),
-			OWASP:   config.OWASP_A04_CryptographicFailures,
-			CWE:     "CWE-259",
+			// Suppress obvious placeholders / examples / doctest lines. Real
+			// secrets do not contain words like fake/example/changeme, and a
+			// `>>>` line is a documentation example, not committed code.
+			AntiPattern: mustCompile(`(?i)>>>|=\s*["'][^"']*(fake|dummy|example|sample|placeholder|changeme|your[-_]|redacted|<[^>]+>|\{\{|test[-_]|foobar|\.\.\.|xxx)`),
+			OWASP:       config.OWASP_A04_CryptographicFailures,
+			CWE:         "CWE-259",
 			CVSS:    8.0,
 			References: []string{
 				"https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/",
@@ -178,7 +182,14 @@ func pythonRules() []Rule {
 			Title:    "Potential SSRF - requests with user-controlled URL",
 			Description: "Making HTTP requests with user-controlled URLs can lead to Server-Side Request " +
 				"Forgery (SSRF), allowing attackers to reach internal services.",
-			Pattern: mustCompile(`requests\.(get|post|put|delete|patch|head)\s*\(\s*(request\.|user_input|url|target)`),
+			// Only fire when the first argument is clearly request/user-derived.
+			// The previous version also triggered on a bare `url`/`target`
+			// variable, which named nearly every HTTP call (config-built URLs
+			// included) and produced almost-pure false positives. A regex engine
+			// cannot do taint tracking, so we trade some recall for precision and
+			// match request objects (request./flask.request/self.request) and
+			// explicit user_input/user_url/untrusted sources.
+			Pattern: mustCompile(`requests\.(get|post|put|delete|patch|head)\s*\(\s*((?:\w+\.)?request\.|user_input|user_url|untrusted)`),
 			OWASP:   config.OWASP_A01_BrokenAccessControl,
 			CWE:     "CWE-918",
 			CVSS:    8.6,
@@ -189,6 +200,28 @@ func pythonRules() []Rule {
 			Remediation: "Validate and allowlist URLs. Use a URL parser to verify scheme, host, and path. Block access to private IP ranges.",
 		},
 
+		// A06:2025 - Possible SSRF via a variable URL (low-confidence companion to
+		// PY-010). PY-010 fires HIGH only when the URL is clearly request-derived;
+		// this rule reports the broader "request to a variable named url/target/..."
+		// at LOW so a cross-line taint (url assigned above, used here) is still
+		// surfaced for review instead of being silently dropped (audit finding).
+		{
+			ID:       "PY-021",
+			Language: config.LangPython,
+			Severity: config.SeverityLow,
+			Title:    "Possible SSRF - HTTP request to a variable URL",
+			Description: "An HTTP request whose URL comes from a variable may be SSRF if that variable " +
+				"is attacker-influenced. Low confidence: verify whether the URL is user-controlled.",
+			Pattern: mustCompile(`(?i)requests\.(get|post|put|delete|patch|head)\s*\(\s*(url|target|uri|endpoint|host|link|dest|addr|address)\b`),
+			OWASP:   config.OWASP_A01_BrokenAccessControl,
+			CWE:     "CWE-918",
+			CVSS:    4.3,
+			References: []string{
+				"https://cwe.mitre.org/data/definitions/918.html",
+			},
+			Remediation: "If the URL can be influenced by user input, validate and allowlist it (scheme/host) and block private IP ranges.",
+		},
+
 		// A09:2025 - Logging sensitive data
 		{
 			ID:       "PY-011",
@@ -197,9 +230,20 @@ func pythonRules() []Rule {
 			Title:    "Potential logging of sensitive information",
 			Description: "Logging passwords, tokens, or other sensitive data creates exposure risks " +
 				"through log files, monitoring systems, and SIEM tools.",
-			Pattern: mustCompile(`(?i)(logging\.|logger\.)(debug|info|warning|error|critical)\s*\(.*(?:password|token|secret|credential|api_key)`),
-			OWASP:   config.OWASP_A09_SecurityLoggingAlertingFailures,
-			CWE:     "CWE-532",
+			// Only fire when a sensitive *value* is logged, not when a sensitive
+			// word merely appears in the literal message. Three forms are caught:
+			// (1) f-string interpolating a sensitive var: f"...{password}...";
+			// (2) a format string followed by `%`/`,` then a sensitive arg;
+			// (3) a sensitive variable passed directly as the first argument.
+			// The interpolation arm covers `%`, `,` and `+` (concatenation), so
+			// `logger.info("pw: " + password)` is caught. To keep the prefix
+			// roots password/secret/apikey matching suffixed vars (secret_value,
+			// password_hash) while NOT re-flagging the common non-secret metadata
+			// `token_expiry`/`token_count`, `token` keeps a trailing word boundary
+			// but the others do not.
+			Pattern: mustCompile(`(?i)(logging\.|logger\.)(debug|info|warning|error|critical)\s*\(\s*(?:f["'][^"']*\{[^}]*(?:password|passwd|secret|token|api_?key)|["'][^"']*["']\s*[%,+]\s*[^)]*(?:\bpassword|\bpasswd|\bsecret|\bapi_?key|\btoken\b)|(?:password|passwd|secret|token|api_?key)\b)`),
+			OWASP: config.OWASP_A09_SecurityLoggingAlertingFailures,
+			CWE:   "CWE-532",
 			CVSS:    5.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/532.html",
@@ -252,7 +296,11 @@ func pythonRules() []Rule {
 			Title:    "Use of insecure random number generator",
 			Description: "Python's random module is not cryptographically secure and should not be " +
 				"used for security-sensitive operations like token generation.",
-			Pattern: mustCompile(`(?i)\brandom\.(random|randint|choice|randrange|shuffle)\s*\(`),
+			// Only fire when a security-sensitive identifier appears on the same
+			// line as the random call. The bare pattern flagged every
+			// random.choice/random.random used for sampling, simulation and test
+			// data (21 hits in the Redis test scripts) — almost entirely FPs.
+			Pattern: mustCompile(`(?i)(password|passwd|secret|token|nonce|salt|apikey|api_key|session|csrf|otp|seed).*\brandom\.(random|randint|choice|randrange|shuffle|getrandbits|uniform)\s*\(|\brandom\.(random|randint|choice|randrange|shuffle|getrandbits|uniform)\s*\(.*(password|passwd|secret|token|nonce|salt|apikey|api_key|session|csrf|otp|seed)`),
 			OWASP:   config.OWASP_A04_CryptographicFailures,
 			CWE:     "CWE-338",
 			CVSS:    5.9,
@@ -260,6 +308,28 @@ func pythonRules() []Rule {
 				"https://cwe.mitre.org/data/definitions/338.html",
 			},
 			Remediation: "Use the secrets module for security-sensitive operations: secrets.token_hex(), secrets.token_urlsafe()",
+		},
+
+		// A04:2025 - Possible weak randomness (low-confidence companion to PY-014).
+		// PY-014 fires HIGH/MEDIUM only when a security keyword shares the line;
+		// this reports any random.* use at LOW so a cross-line case (value built
+		// from random here, used as a token elsewhere) is still surfaced for
+		// review instead of dropped. Filter with --severity MEDIUM to hide.
+		{
+			ID:       "PY-022",
+			Language: config.LangPython,
+			Severity: config.SeverityLow,
+			Title:    "Possible weak randomness (review if security-sensitive)",
+			Description: "random.* is not cryptographically secure. Low confidence: only a problem if the " +
+				"value is used for tokens, keys, salts, or other security purposes.",
+			Pattern: mustCompile(`(?i)\brandom\.(random|randint|choice|randrange|shuffle|getrandbits|uniform)\s*\(`),
+			OWASP:   config.OWASP_A04_CryptographicFailures,
+			CWE:     "CWE-338",
+			CVSS:    3.1,
+			References: []string{
+				"https://cwe.mitre.org/data/definitions/338.html",
+			},
+			Remediation: "If the value is security-sensitive, use the secrets module instead of random.",
 		},
 
 		// A04:2025 - SSL/TLS verification disabled
@@ -340,12 +410,20 @@ func pythonRules() []Rule {
 			Language: config.LangPython,
 			Severity: config.SeverityCritical,
 			Title:    "Unsafe YAML deserialization with yaml.load()",
-			Description: "yaml.load() without the Loader parameter can execute arbitrary Python code. " +
-				"This is a critical vulnerability when processing untrusted YAML.",
+			Description: "yaml.load() with no loader or an unsafe loader (yaml.Loader / yaml.UnsafeLoader) " +
+				"can execute arbitrary Python code via !!python/object tags when the YAML is untrusted.",
 			Pattern: mustCompile(`yaml\.load\s*\([^)]*\)`),
-			OWASP:   config.OWASP_A08_SoftwareDataIntegrityFailures,
-			CWE:     "CWE-502",
-			CVSS:    9.8,
+			// Suppress when a known-safe loader is passed explicitly. The
+			// loader name is anchored right after `Loader=` so dangerous
+			// names like UnsafeLoader (which contains the substring "safe")
+			// are NOT matched. Custom loaders are left flagged for review,
+			// since a scanner cannot prove a custom Loader subclass is safe.
+			// Note: FullLoader had RCE bypasses on PyYAML < 5.4 (CVE-2020-1747,
+			// CVE-2020-14343); it is treated as safe here as the modern default.
+			AntiPattern: mustCompile(`(?i)Loader\s*=\s*(?:\w+\.)?C?(?:Safe|Full|Base)Loader\b`),
+			OWASP:       config.OWASP_A08_SoftwareDataIntegrityFailures,
+			CWE:         "CWE-502",
+			CVSS:        9.8,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/502.html",
 				"https://pyyaml.org/wiki/PyYAMLDocumentation",

@@ -68,9 +68,14 @@ func javascriptRules() []Rule {
 			Description: "Hardcoded secrets in JavaScript/TypeScript source code are exposed to all " +
 				"users who can access the source (especially frontend code).",
 			Pattern: mustCompile(`(?i)(apiKey|api_key|secret|password|token|passwd)\s*[:=]\s*["'][^"']{8,}["']`),
-			OWASP:   config.OWASP_A04_CryptographicFailures,
-			CWE:     "CWE-259",
-			CVSS:    8.0,
+			// Suppress only unambiguous placeholders/examples. We deliberately do
+			// NOT suppress values that merely contain a security word: a real
+			// secret can read "secretLiveDbValue...", and dropping those caused a
+			// false negative on exactly what this rule must catch (audit finding).
+			AntiPattern: mustCompile(`(?i)[:=]\s*["'][^"']*(fake|dummy|example|sample|placeholder|changeme|your[-_]|redacted|test[-_]|foobar|\.\.\.|xxx|<[^>]+>|\{\{)`),
+			OWASP:       config.OWASP_A04_CryptographicFailures,
+			CWE:         "CWE-259",
+			CVSS:        8.0,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/259.html",
 			},
@@ -184,23 +189,25 @@ func javascriptRules() []Rule {
 			Remediation: "Use crypto.randomBytes() (Node.js) or window.crypto.getRandomValues() (browser) for security-sensitive randomness.",
 		},
 
-		// A02:2025 - Helmet.js missing
+		// JS-011 re-implemented as a FILE-SCOPED check: fire once per file that
+		// creates an Express app but never references Helmet. Far more precise
+		// than the old per-line rule (which fired on every express() call, 652×
+		// on the Express test suite). LOW confidence — Helmet may be applied in
+		// a separate module, so this is a review hint, not a definitive finding.
 		{
-			ID:       "JS-011",
-			Language: config.LangJavaScript,
-			Severity: config.SeverityMedium,
-			Title:    "Security headers not configured (Helmet.js missing)",
-			Description: "Express applications without Helmet.js are missing critical security headers " +
-				"like CSP, HSTS, X-Frame-Options, etc.",
-			Pattern: mustCompile(`(?i)express\s*\(\s*\)`),
-			OWASP:   config.OWASP_A02_SecurityMisconfiguration,
-			CWE:     "CWE-693",
-			CVSS:    5.3,
-			References: []string{
-				"https://helmetjs.github.io/",
-				"https://cwe.mitre.org/data/definitions/693.html",
-			},
-			Remediation: "Add Helmet.js: const helmet = require('helmet'); app.use(helmet()); Configure CSP, HSTS and other headers per your requirements.",
+			ID:              "JS-011",
+			Language:        config.LangJavaScript,
+			Severity:        config.SeverityLow,
+			Title:           "Express app without Helmet (security headers)",
+			Description:     "This file creates an Express app but does not reference Helmet, so security headers (CSP, HSTS, X-Frame-Options) may be unset.",
+			FileScoped:      true,
+			Pattern:         mustCompile(`(?i)\bexpress\s*\(\s*\)`),
+			RequiredPattern: mustCompile(`(?i)helmet`),
+			OWASP:           config.OWASP_A02_SecurityMisconfiguration,
+			CWE:             "CWE-693",
+			CVSS:            3.1,
+			References:      []string{"https://helmetjs.github.io/", "https://cwe.mitre.org/data/definitions/693.html"},
+			Remediation:     "If this app serves browsers, add Helmet: const helmet = require('helmet'); app.use(helmet());",
 		},
 
 		// A01:2025 - Path traversal (Node.js)
@@ -279,23 +286,25 @@ func javascriptRules() []Rule {
 			Remediation: "Test regexes with safe-regex or redos tools. Set timeouts on regex operations. Use non-backtracking regex engines where possible.",
 		},
 
-		// A02:2025 - CSRF protection missing
+		// JS-016 re-implemented as a FILE-SCOPED check: fire once per file that
+		// defines state-changing routes (app.post/put/delete/patch) but never
+		// references a CSRF defense (csurf/csrf token or SameSite cookies). LOW
+		// confidence — token-authenticated APIs need no CSRF token, and the
+		// defense may live in a shared middleware module.
 		{
-			ID:       "JS-016",
-			Language: config.LangJavaScript,
-			Severity: config.SeverityMedium,
-			Title:    "Missing CSRF protection",
-			Description: "API endpoints that accept state-changing requests without CSRF tokens are " +
-				"vulnerable to Cross-Site Request Forgery attacks.",
-			Pattern: mustCompile(`(?i)app\.(post|put|delete|patch)\s*\(`),
-			OWASP:   config.OWASP_A01_BrokenAccessControl,
-			CWE:     "CWE-352",
-			CVSS:    6.5,
-			References: []string{
-				"https://cwe.mitre.org/data/definitions/352.html",
-				"https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
-			},
-			Remediation: "Use csurf middleware for Express, or implement SameSite=Strict cookies. For APIs, verify Origin/Referer headers.",
+			ID:              "JS-016",
+			Language:        config.LangJavaScript,
+			Severity:        config.SeverityLow,
+			Title:           "State-changing routes without CSRF defense",
+			Description:     "This file defines POST/PUT/DELETE/PATCH routes but references no CSRF protection (csurf or SameSite cookies).",
+			FileScoped:      true,
+			Pattern:         mustCompile(`(?i)app\.(post|put|delete|patch)\s*\(`),
+			RequiredPattern: mustCompile(`(?i)csrf|csurf|samesite`),
+			OWASP:           config.OWASP_A01_BrokenAccessControl,
+			CWE:             "CWE-352",
+			CVSS:            4.3,
+			References:      []string{"https://cwe.mitre.org/data/definitions/352.html"},
+			Remediation:     "Use csurf middleware or SameSite=Strict cookies; for token-auth APIs, verify Origin/Referer.",
 		},
 	}
 }

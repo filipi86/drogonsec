@@ -142,6 +142,10 @@ var FileExtensionMap = map[string]Language{
 	".tf":     LangTerraform,
 	".tfvars": LangTerraform,
 	".hcl":    LangTerraform,
+	// .conf is treated as Nginx for SAST: the Nginx rules gate on Nginx-specific
+	// directives (ssl_protocols, server_tokens, autoindex), so a non-Nginx .conf
+	// simply produces no matches rather than mislabeled findings.
+	".conf": LangNginx,
 }
 
 // DefaultIgnorePaths are always ignored during scanning
@@ -165,9 +169,16 @@ var DefaultIgnorePaths = []string{
 	".mypy_cache",
 	".gradle",
 	".m2",
-	// Test-data directories (Go convention) – contain intentionally
-	// vulnerable fixtures and should not be flagged as production issues.
+	// Test-data directories – contain intentionally vulnerable fixtures
+	// and should not be flagged as production issues. Single-segment names
+	// match any path component; multi-segment names match the literal
+	// sub-path (the walker checks strings.Contains(path, "/"+name+"/")).
 	"testdata",
 	"fixtures",
 	"test_fixtures",
+	"tests/data",
+	"test/data",
+	"tests/fixtures",
+	"test/fixtures",
+	"spec/fixtures",
 }
