@@ -60,7 +60,7 @@ func golangRules() []Rule {
 		},
 		{
 			ID: "GO-007", Language: config.LangGo, Severity: config.SeverityMedium,
-			Title:       "Unsafe use of math/rand for security",
+			Title: "Unsafe use of math/rand for security",
 			Description: "math/rand is not cryptographically secure and must not be used to generate " +
 				"tokens, keys, salts, nonces, or other security-sensitive values.",
 			// Only fire when a security-sensitive identifier appears on the same
@@ -202,7 +202,7 @@ func kotlinRules() []Rule {
 			// how you pin certs) and even matched imports and class names like
 			// CustomSSLSocketFactory — ~100% false positives on any TLS code.
 			Pattern: mustCompile(`(?i)(trustAllCerts|ALLOW_ALL_HOSTNAME_VERIFIER|NoopHostnameVerifier|HostnameVerifier\s*\{[^}]*->\s*true|fun\s+verify\b[^=\n]*=\s*true)`),
-			OWASP:       config.OWASP_A04_CryptographicFailures, CWE: "CWE-295", CVSS: 7.4,
+			OWASP:   config.OWASP_A04_CryptographicFailures, CWE: "CWE-295", CVSS: 7.4,
 			References:  []string{"https://cwe.mitre.org/data/definitions/295.html"},
 			Remediation: "Use the default OkHttpClient which validates SSL certificates. Implement certificate pinning for sensitive apps.",
 		},
@@ -256,7 +256,7 @@ func csharpRules() []Rule {
 			// named BinaryFormatter (e.g. `public byte[] BinaryFormatter()` in
 			// benchmarks), which are not uses of the dangerous type.
 			Pattern: mustCompile(`new\s+BinaryFormatter\s*\(`),
-			OWASP:       config.OWASP_A08_SoftwareDataIntegrityFailures, CWE: "CWE-502", CVSS: 9.8,
+			OWASP:   config.OWASP_A08_SoftwareDataIntegrityFailures, CWE: "CWE-502", CVSS: 9.8,
 			References:  []string{"https://docs.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-security-guide"},
 			Remediation: "BinaryFormatter is deprecated. Use System.Text.Json, MessagePack, or Protobuf instead.",
 		},
@@ -432,8 +432,8 @@ func htmlRules() []Rule {
 			Pattern:         mustCompile(`(?i)<html`),
 			RequiredPattern: mustCompile(`(?i)Content-Security-Policy`),
 			OWASP:           config.OWASP_A02_SecurityMisconfiguration, CWE: "CWE-693", CVSS: 3.1,
-			References:      []string{"https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP"},
-			Remediation:     "Add a CSP via meta tag (<meta http-equiv=\"Content-Security-Policy\" ...>) or an HTTP response header.",
+			References:  []string{"https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP"},
+			Remediation: "Add a CSP via meta tag (<meta http-equiv=\"Content-Security-Policy\" ...>) or an HTTP response header.",
 		},
 		{
 			ID: "HTML-003", Language: config.LangHTML, Severity: config.SeverityLow,
@@ -674,7 +674,7 @@ func nginxRules() []Rule {
 			// weak when it is NOT the prefix of TLSv1.2/1.3, so it must be
 			// followed by whitespace/semicolon/EOL (RE2 has no negative lookahead).
 			Pattern: mustCompile(`(?i)ssl_protocols\b[^;]*(SSLv2|SSLv3|TLSv1\.0|TLSv1\.1|TLSv1(\s|;|$))`),
-			OWASP:       config.OWASP_A02_SecurityMisconfiguration, CWE: "CWE-327", CVSS: 7.4,
+			OWASP:   config.OWASP_A02_SecurityMisconfiguration, CWE: "CWE-327", CVSS: 7.4,
 			References:  []string{"https://cwe.mitre.org/data/definitions/327.html"},
 			Remediation: "Use only modern protocols: ssl_protocols TLSv1.2 TLSv1.3;",
 		},

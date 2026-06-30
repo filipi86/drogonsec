@@ -57,7 +57,7 @@ func pythonRules() []Rule {
 			AntiPattern: mustCompile(`(?i)>>>|=\s*["'][^"']*(fake|dummy|example|sample|placeholder|changeme|your[-_]|redacted|<[^>]+>|\{\{|test[-_]|foobar|\.\.\.|xxx)`),
 			OWASP:       config.OWASP_A04_CryptographicFailures,
 			CWE:         "CWE-259",
-			CVSS:    8.0,
+			CVSS:        8.0,
 			References: []string{
 				"https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/",
 				"https://cwe.mitre.org/data/definitions/259.html",
@@ -242,8 +242,8 @@ func pythonRules() []Rule {
 			// `token_expiry`/`token_count`, `token` keeps a trailing word boundary
 			// but the others do not.
 			Pattern: mustCompile(`(?i)(logging\.|logger\.)(debug|info|warning|error|critical)\s*\(\s*(?:f["'][^"']*\{[^}]*(?:password|passwd|secret|token|api_?key)|["'][^"']*["']\s*[%,+]\s*[^)]*(?:\bpassword|\bpasswd|\bsecret|\bapi_?key|\btoken\b)|(?:password|passwd|secret|token|api_?key)\b)`),
-			OWASP: config.OWASP_A09_SecurityLoggingAlertingFailures,
-			CWE:   "CWE-532",
+			OWASP:   config.OWASP_A09_SecurityLoggingAlertingFailures,
+			CWE:     "CWE-532",
 			CVSS:    5.5,
 			References: []string{
 				"https://cwe.mitre.org/data/definitions/532.html",
