@@ -18,12 +18,6 @@
 
 ---
 
-## Documentation
-
-📖 **Full Documentation:** -->  [Drogonsec Doc](https://cross-intel.com/opensource/drogonsec)
-
----
-
 ## Features
 
 | Engine | Description |
@@ -360,9 +354,3 @@ Built with: Go, Cobra, Viper, go-git.
 ## Maintained by
 
 This open-source project is maintained and supported by **[CROSS-INTEL](https://cross-intel.com)**.
-
----
-
-## Links
-
-📖 **Documentation:** [cross-intel.com/opensource/drogonsec](https://cross-intel.com/opensource/drogonsec)
