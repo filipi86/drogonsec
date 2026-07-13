@@ -15,11 +15,8 @@ jobs:
   cla-check:
     name: CLA Check
     runs-on: ubuntu-latest
-    # Skip when the PR author is the repo owner or an automated bot.
-    # The CLA Assistant action otherwise inspects every committer (including
-    # Co-Authored-By trailers), and any non-allowlisted co-author triggers a
-    # write to the signatures file on main — which is branch-protected and
-    # rejects direct pushes, breaking the check for the owner's own PRs.
+    # Skip automated bots and the repo owner (owner pushes directly to main and
+    # is covered by the CLA as maintainer).
     if: github.actor != 'dependabot[bot]' && github.actor != 'filipi86'
     steps:
       - name: CLA Assistant
@@ -29,7 +26,12 @@ jobs:
         with:
           path-to-signatures: ".github/cla-signatures.json"
           path-to-document: "https://github.com/filipi86/drogonsec/blob/main/CLA.md"
-          branch: main
+          # Signatures are stored on a DEDICATED, UNPROTECTED branch. The bot
+          # commits the signatures file with GITHUB_TOKEN, which cannot push to
+          # main/staging/development (those are covered by the main-protection
+          # ruleset, admin-bypass only). Writing to main here previously made the
+          # check fail with "Repository rule violations found" even after signing.
+          branch: cla-signatures
           allowlist: filipi86,bot*,*[bot]
           custom-notsigned-prcomment: |
             Thank you for your contribution to **DrogonSec**!
