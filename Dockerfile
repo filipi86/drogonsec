@@ -2,7 +2,7 @@
 # Multi-stage build for minimal final image
 
 # ============ BUILD STAGE ============
-FROM golang:1.26.4-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 
 # ENVIRONMENT is injected by CI (production | staging | development).
 # Defaults to production for plain `docker build .` invocations.
