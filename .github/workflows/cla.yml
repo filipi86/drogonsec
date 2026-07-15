@@ -18,9 +18,14 @@ jobs:
   cla-check:
     name: CLA Check
     runs-on: ubuntu-latest
-    # Skip automated bots and the repo owner (owner pushes directly to main and
-    # is covered by the CLA as maintainer).
-    if: github.actor != 'dependabot[bot]' && github.actor != 'filipi86'
+    # Skip PRs authored by bots and the repo owner (owner pushes directly to
+    # main and is covered by the CLA as maintainer). Keyed on the PR author,
+    # NOT github.actor: for pull_request_target the actor is whoever triggered
+    # the event, so a maintainer reopening a contributor PR must not skip the
+    # check. For comments, run only on signature/recheck comments.
+    if: |
+      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, 'recheck') || contains(github.event.comment.body, 'I have read the CLA Document'))) ||
+      (github.event_name == 'pull_request_target' && github.event.pull_request.user.login != 'filipi86' && github.event.pull_request.user.login != 'dependabot[bot]')
     steps:
       - name: CLA Assistant
         uses: contributor-assistant/github-action@v2.6.1
