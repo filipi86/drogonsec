@@ -10,6 +10,9 @@ GO             := go
 GOFLAGS        :=
 BUILD_DIR      := ./bin
 MAIN           := ./cmd/drogonsec/main.go
+DOCKER_IMAGE   := drogonsec-scanner
+DOCKER_PLATFORMS := linux/amd64,linux/arm64
+DOCKER_OUTPUT  := type=oci,dest=$(BUILD_DIR)/$(BINARY_NAME)-docker-$(VERSION).tar
 
 .PHONY: all build clean test lint install release help
 
@@ -99,12 +102,17 @@ scan-sarif: build ## Scan and generate SARIF report (for GitHub)
 	@echo "✓ SARIF: drogonsec.sarif"
 
 ##@ Docker
-docker-build: ## Build Docker image
-	docker build -t drogonsec-scanner:$(VERSION) .
+docker-build: ## Build Docker image for linux/amd64 and linux/arm64
+	@mkdir -p $(BUILD_DIR)
+	docker buildx build --platform $(DOCKER_PLATFORMS) -t $(DOCKER_IMAGE):$(VERSION) --output $(DOCKER_OUTPUT) .
 	@echo "✓ Docker image built"
 
+docker-push: ## Build and push multi-arch Docker image (set DOCKER_IMAGE)
+	docker buildx build --platform $(DOCKER_PLATFORMS) -t $(DOCKER_IMAGE):$(VERSION) --push .
+	@echo "✓ Docker image pushed"
+
 docker-run: ## Run DrogonSec in Docker
-	docker run --rm -v $(PWD):/scan drogonsec-scanner:$(VERSION) scan /scan
+	docker run --rm -v $(PWD):/scan $(DOCKER_IMAGE):$(VERSION) scan /scan
 
 ##@ Cleanup
 clean: ## Remove build artifacts
