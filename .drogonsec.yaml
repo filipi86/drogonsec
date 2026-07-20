@@ -87,13 +87,18 @@ custom_rules:
   #   remediation: "Use safe_function() instead"
 
 # False positive suppression
-# These entries document known false positives in the project's own test suite.
-# The patterns below are deliberately placed in test files to verify the scanner
-# detects them — they are not real credentials or vulnerabilities.
+# These entries document known false positives that arise when DrogonSec scans
+# its own source tree (dogfooding). Two families exist:
+#   1. Test fixtures — credentials/patterns deliberately placed in test files to
+#      verify the scanner detects them; not real credentials or vulnerabilities.
+#   2. Detector self-matches — the leak/SAST engines embed the very PEM markers,
+#      private-key headers and TODO markers they hunt for; when the scanner reads
+#      its own rule definitions it flags them. Each entry is scoped to a single
+#      rule_id + file so a genuine, unrelated issue in these files still surfaces.
 suppressions:
   - rule_id: "LEAK-001"
     file: "internal/leaks/detector_test.go"
-    reason: "Test fixture — official AWS documentation example key (AKIAIOSFODNN7EXAMPLE), not a real credential"
+    reason: "Test fixture — official AWS documentation example key placeholder, not a real credential"
   - rule_id: "LEAK-020"
     file: "internal/leaks/detector_test.go"
     reason: "Test fixture — synthetic GitHub token pattern, not a real token"
@@ -112,6 +117,39 @@ suppressions:
   - rule_id: "GO-005"
     file: "internal/engine/engine_test.go"
     reason: "Test fixture — InsecureSkipVerify:true embedded in a Go code string to verify GO-005 detection"
+  # --- Detector self-matches: the leak engine's own rule definitions ---
+  - rule_id: "GEN-001"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — the leak detector's own private-key rule patterns (`-----BEGIN ... PRIVATE KEY`), not committed key material"
+  - rule_id: "LEAK-080"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — RSA private-key detection pattern in the detector's rule table, not a real key"
+  - rule_id: "LEAK-081"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — EC private-key detection pattern in the detector's rule table, not a real key"
+  - rule_id: "LEAK-082"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — OpenSSH private-key detection pattern in the detector's rule table, not a real key"
+  - rule_id: "LEAK-083"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — PGP private-key detection pattern in the detector's rule table, not a real key"
+  - rule_id: "LEAK-084"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — DSA private-key detection pattern in the detector's rule table, not a real key"
+  - rule_id: "LEAK-090"
+    file: "internal/leaks/detector.go"
+    reason: "Self-match — certificate detection pattern in the detector's rule table, not committed material"
+  # --- Detector self-matches: the SAST engine's own rule definitions ---
+  - rule_id: "GEN-003"
+    file: "internal/engine/rules_other.go"
+    reason: "Self-match — the TODO/FIXME security-comment rule text lives in this rule definition"
+  - rule_id: "LEAK-090"
+    file: "internal/engine/rules_other.go"
+    reason: "Self-match — certificate PEM marker embedded in a SAST rule definition, not committed material"
+  # --- SCA: unreachable transitive advisory ---
+  - rule_id: "GO-2026-5932"
+    file: "go.mod"
+    reason: "Only affects golang.org/x/crypto/openpgp (unmaintained, no fixed version). DrogonSec imports x/crypto only transitively and never uses the openpgp subpackage; govulncheck confirms the code does not call it."
 
 # Fail conditions (exit code 1 when true)
 fail_on:

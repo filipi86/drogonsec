@@ -168,12 +168,26 @@ func runScan(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Known-false-positive suppressions come only from the config file
+	// (.drogonsec.yaml or --config); there is no flag equivalent because
+	// each entry requires a documented reason.
+	var suppressions []config.Suppression
+	if err := viper.UnmarshalKey("suppressions", &suppressions); err != nil {
+		return fmt.Errorf("invalid suppressions in config file: %w", err)
+	}
+	for _, s := range suppressions {
+		if s.RuleID == "" || s.File == "" {
+			return fmt.Errorf("invalid suppression entry (rule_id=%q, file=%q): both rule_id and file are required", s.RuleID, s.File)
+		}
+	}
+
 	// Build scan configuration
 	cfg := &config.ScanConfig{
 		TargetPath:   absPath,
 		OutputFormat: outputFormat,
 		OutputFile:   outputFile,
 		IgnorePaths:  ignorePaths,
+		Suppressions: suppressions,
 		EnableAI:     enableAI,
 		AIAPIKey:     apiKey,
 		AIProvider:   aiProvider,

@@ -86,7 +86,8 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 		}
 	}
 
-	// Step 5: Compute statistics
+	// Step 5: Drop documented false positives, then compute statistics.
+	a.applySuppressions(result)
 	result.ComputeStats()
 
 	// Print summary
@@ -285,11 +286,23 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 			ignored := gitignore.IsIgnored(file)
 			for _, lf := range findings {
 				af := leakToFinding(lf)
-				if ignored {
+				// Severity demotion (never drops — only lowers, keeping the
+				// finding auditable at lower --severity tiers):
+				//  - a secret on a .gitignored file (e.g. a local .env) is not
+				//    committed material → INFO;
+				//  - a secret in a test/fixture file is an intentional
+				//    throwaway value used to exercise the detector, not a real
+				//    leak → LOW. Mirrors the SAST secret-family demotion.
+				switch {
+				case ignored:
 					af.Severity = config.SeverityInfo
 					af.Description = "[.gitignore] " + af.Description +
 						" — file is listed in .gitignore; severity downgraded to INFO. " +
 						"If this file was ever committed historically, run `drogonsec scan . --git-history` to check."
+				case isTestPath(af.File) && af.Severity.Weight() > config.SeverityLow.Weight():
+					af.Severity = config.SeverityLow
+					af.Description = "[test file] " + af.Description +
+						" — test/fixture path; likely an intentional fixture, downgraded to LOW."
 				}
 				a.mu.Lock()
 				result.AddLeakFinding(af)

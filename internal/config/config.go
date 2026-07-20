@@ -2,12 +2,25 @@ package config
 
 import "time"
 
+// Suppression documents a known false positive that should be excluded
+// from scan results. Loaded from the `suppressions:` section of
+// .drogonsec.yaml. RuleID must match the finding's rule exactly; File is
+// matched against the finding's path relative to the scan target, either
+// literally or as a path.Match glob (e.g. "internal/engine/*_test.go").
+// Reason is required documentation of why the finding is not real.
+type Suppression struct {
+	RuleID string `mapstructure:"rule_id"`
+	File   string `mapstructure:"file"`
+	Reason string `mapstructure:"reason"`
+}
+
 // ScanConfig holds all configuration for a scan session
 type ScanConfig struct {
 	TargetPath   string
 	OutputFormat string
 	OutputFile   string
 	IgnorePaths  []string
+	Suppressions []Suppression
 	EnableAI     bool
 	AIAPIKey     string        // generic AI provider key
 	AIProvider   string        // "anthropic" (default) | "openai" | "azure" | "custom"
@@ -169,6 +182,9 @@ var DefaultIgnorePaths = []string{
 	".mypy_cache",
 	".gradle",
 	".m2",
+	// Claude Code working directory — may contain git worktrees with full
+	// copies of the repository, which would double-report every finding.
+	".claude",
 	// Test-data directories – contain intentionally vulnerable fixtures
 	// and should not be flagged as production issues. Single-segment names
 	// match any path component; multi-segment names match the literal

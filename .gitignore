@@ -42,6 +42,7 @@ secrets.yaml
 configs/ai.yaml
 
 # Reports (generated files - add to .gitignore if you don't want them in VCS)
+report.html
 drogonsec-report.html
 drogonsec.sarif
 *.sarif
