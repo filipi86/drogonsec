@@ -5,6 +5,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/filipi86/drogonsec/internal/version"
 )
 
 var versionCmd = &cobra.Command{
@@ -12,9 +14,10 @@ var versionCmd = &cobra.Command{
 	Short: "Print DrogonSec version information",
 	Run: func(cmd *cobra.Command, args []string) {
 		cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
-		fmt.Printf("%s v%s\n", cyan("Drogonsec Security Scanner"), "0.2.0")
-		fmt.Printf("  Build:    %s\n", "2026-04-16")
-		fmt.Printf("  Go:       %s\n", "1.25")
+		fmt.Printf("%s %s\n", cyan("DrogonSec Security Scanner"), version.String())
+		fmt.Printf("  Commit:   %s\n", version.GitCommit)
+		fmt.Printf("  Build:    %s\n", version.BuildTime)
+		fmt.Printf("  Go:       %s\n", version.GoVersion())
 		fmt.Printf("  License:  Apache 2.0\n")
 		fmt.Printf("  GitHub:   https://github.com/filipi86/drogonsec\n")
 		fmt.Printf("\n  OWASP Top 10:2025 aligned\n")

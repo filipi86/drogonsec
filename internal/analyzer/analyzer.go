@@ -14,6 +14,7 @@ import (
 	"github.com/filipi86/drogonsec/internal/engine"
 	"github.com/filipi86/drogonsec/internal/leaks"
 	"github.com/filipi86/drogonsec/internal/sca"
+	"github.com/filipi86/drogonsec/internal/version"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -33,7 +34,7 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 	result := &ScanResult{
 		TargetPath: a.cfg.TargetPath,
 		ScanTime:   time.Now(),
-		Version:    "0.2.0",
+		Version:    version.Version,
 	}
 
 	// Step 1: Collect files to scan

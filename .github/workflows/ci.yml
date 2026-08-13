@@ -52,12 +52,7 @@ jobs:
 
       - name: Build binary
         run: |
-          mkdir -p bin
-          go build \
-            -ldflags "-X main.Version=$(git describe --tags --always 2>/dev/null || echo '0.2.0') \
-                      -X github.com/filipi86/drogonsec/internal/cli.Environment=production" \
-            -o bin/drogonsec \
-            ./cmd/drogonsec
+          make build EXTRA_LDFLAGS="-X github.com/filipi86/drogonsec/internal/cli.Environment=production"
 
   # ============ LINT ============
   lint:
@@ -121,8 +116,13 @@ jobs:
         with:
           go-version: '1.26.5'
 
+      # The tag is passed explicitly: actions/checkout does a shallow clone, so
+      # the `git describe` the Makefile falls back to cannot see the tag.
       - name: Build all platforms
-        run: make release
+        run: |
+          make release \
+            VERSION="${GITHUB_REF_NAME#v}" \
+            EXTRA_LDFLAGS="-X github.com/filipi86/drogonsec/internal/cli.Environment=production"
 
       - name: Create checksums
         run: |
@@ -134,6 +134,7 @@ jobs:
         with:
           files: |
             bin/drogonsec-linux-amd64
+            bin/drogonsec-linux-arm64
             bin/drogonsec-darwin-amd64
             bin/drogonsec-darwin-arm64
             bin/drogonsec-windows-amd64.exe

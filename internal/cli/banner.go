@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+
+	"github.com/filipi86/drogonsec/internal/version"
 )
 
 // Environment is injected at build time via ldflags:
@@ -152,7 +154,7 @@ func PrintDrogonBanner() {
 	fmt.Println(boxLine(
 		fr("►") + " " +
 			nYel("Created by Filipi Pires") +
-			dim(" │ v0.2.0 │ OWASP 2025 │ ") +
+			dim(" │ "+version.Short()+" │ OWASP 2025 │ ") +
 			fr("Maintained by: CROSS-INTEL") +
 			" " + fr("◄")))
 	fmt.Println(botBdr)

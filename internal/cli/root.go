@@ -8,6 +8,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/filipi86/drogonsec/internal/version"
 )
 
 var (
@@ -27,7 +29,7 @@ var rootCmd = &cobra.Command{
        drogonsec scan . --severity HIGH
 
   GitHub: https://github.com/filipi86/drogonsec`,
-		color.New(color.FgHiCyan, color.Bold).Sprint("DrogonSec Security Scanner v0.2.0"),
+		color.New(color.FgHiCyan, color.Bold).Sprint("DrogonSec Security Scanner "+version.String()),
 		color.New(color.FgHiBlack).Sprint("Usage:"),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

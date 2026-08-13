@@ -2,10 +2,14 @@
 # https://github.com/filipi86/drogonsec
 
 BINARY_NAME    := drogonsec
-VERSION        := 0.2.0
+# Derived from the last tag so there is no version literal to bump by hand.
+# Override explicitly when the tag is not reachable, e.g. a shallow CI clone:
+#   make release VERSION=1.2.3
+VERSION        ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo "dev")
 BUILD_TIME     := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT     := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-LDFLAGS        := -ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT) $(EXTRA_LDFLAGS)"
+VERSION_PKG    := github.com/filipi86/drogonsec/internal/version
+LDFLAGS        := -ldflags "-X $(VERSION_PKG).Version=$(VERSION) -X $(VERSION_PKG).BuildTime=$(BUILD_TIME) -X $(VERSION_PKG).GitCommit=$(GIT_COMMIT) $(EXTRA_LDFLAGS)"
 GO             := go
 GOFLAGS        :=
 BUILD_DIR      := ./bin
@@ -29,9 +33,10 @@ build: ## Build for current OS/arch
 	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN)
 	@echo "✓ Built: $(BUILD_DIR)/$(BINARY_NAME)"
 
-build-linux: ## Build for Linux amd64
+build-linux: ## Build for Linux (amd64 + arm64)
 	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN)
-	@echo "✓ Built: $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64"
+	GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(MAIN)
+	@echo "✓ Built Linux binaries"
 
 build-darwin: ## Build for macOS (Intel + Apple Silicon)
 	GOOS=darwin GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN)
