@@ -12,7 +12,7 @@ var versionCmd = &cobra.Command{
 	Short: "Print DrogonSec version information",
 	Run: func(cmd *cobra.Command, args []string) {
 		cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
-		fmt.Printf("%s v%s\n", cyan("Drogonsec Security Scanner"), "0.1.0")
+		fmt.Printf("%s v%s\n", cyan("Drogonsec Security Scanner"), "0.2.0")
 		fmt.Printf("  Build:    %s\n", "2026-04-16")
 		fmt.Printf("  Go:       %s\n", "1.25")
 		fmt.Printf("  License:  Apache 2.0\n")

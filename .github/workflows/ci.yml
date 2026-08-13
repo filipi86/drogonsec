@@ -54,7 +54,7 @@ jobs:
         run: |
           mkdir -p bin
           go build \
-            -ldflags "-X main.Version=$(git describe --tags --always 2>/dev/null || echo '0.1.0') \
+            -ldflags "-X main.Version=$(git describe --tags --always 2>/dev/null || echo '0.2.0') \
                       -X github.com/filipi86/drogonsec/internal/cli.Environment=production" \
             -o bin/drogonsec \
             ./cmd/drogonsec

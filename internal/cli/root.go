@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
        drogonsec scan . --severity HIGH
 
   GitHub: https://github.com/filipi86/drogonsec`,
-		color.New(color.FgHiCyan, color.Bold).Sprint("DrogonSec Security Scanner v0.1.0"),
+		color.New(color.FgHiCyan, color.Bold).Sprint("DrogonSec Security Scanner v0.2.0"),
 		color.New(color.FgHiBlack).Sprint("Usage:"),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

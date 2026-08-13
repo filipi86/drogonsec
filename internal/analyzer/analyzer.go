@@ -33,7 +33,7 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 	result := &ScanResult{
 		TargetPath: a.cfg.TargetPath,
 		ScanTime:   time.Now(),
-		Version:    "0.1.0",
+		Version:    "0.2.0",
 	}
 
 	// Step 1: Collect files to scan

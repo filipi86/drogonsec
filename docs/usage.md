@@ -140,7 +140,7 @@ Example output (truncated):
   "version": 1,
   "metadata": {
     "timestamp": "2026-06-23T12:00:00Z",
-    "tools": { "components": [ { "type": "application", "name": "DrogonSec Security Scanner", "version": "0.1.0" } ] },
+    "tools": { "components": [ { "type": "application", "name": "DrogonSec Security Scanner", "version": "0.2.0" } ] },
     "component": { "type": "application", "name": "myproject" }
   },
   "components": [
@@ -387,7 +387,7 @@ With `fail_on.critical: true`, Drogonsec exits with a non-zero code when critica
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "target": "./myproject",
   "stats": {
     "total_findings": 3,

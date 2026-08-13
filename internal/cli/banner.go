@@ -152,7 +152,7 @@ func PrintDrogonBanner() {
 	fmt.Println(boxLine(
 		fr("►") + " " +
 			nYel("Created by Filipi Pires") +
-			dim(" │ v0.1.0 │ OWASP 2025 │ ") +
+			dim(" │ v0.2.0 │ OWASP 2025 │ ") +
 			fr("Maintained by: CROSS-INTEL") +
 			" " + fr("◄")))
 	fmt.Println(botBdr)
