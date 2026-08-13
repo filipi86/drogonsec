@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/filipi86/drogonsec/internal/config"
 )
 
 // writeFile creates a file with the given content in a fresh temporary
@@ -141,22 +143,69 @@ func TestMatchLineAppliesTheEntropyGate(t *testing.T) {
 	}
 }
 
-func TestMatchLineIgnoresEmptyAndComments(t *testing.T) {
+func TestMatchLineIgnoresEmptyLines(t *testing.T) {
 	d := NewDetector()
 
-	tests := []string{
-		"",
-		"   ",
-		"\t",
-		"# aws_access_key_id: " + fakeAWSKey,
-		"   # aws_access_key_id: " + fakeAWSKey,
-	}
-
-	for _, line := range tests {
+	for _, line := range []string{"", "   ", "\t", "\t  \t"} {
 		if got := d.matchLine(line); len(got) != 0 {
 			t.Errorf("matchLine(%q) returned %d findings, want 0", line, len(got))
 		}
 	}
+}
+
+// TestMatchLineReportsCommentedOutSecrets is the case a leading-"#" skip used
+// to hide. Commenting a credential out is what people do instead of rotating
+// it, and the value stays in the working tree and in the history either way —
+// so it is reported at the rule's own severity, not a reduced one.
+func TestMatchLineReportsCommentedOutSecrets(t *testing.T) {
+	d := NewDetector()
+
+	tests := []struct {
+		name string
+		line string
+	}{
+		{"shell or env comment", "# aws_access_key_id = " + fakeAWSKey},
+		{"indented comment", "    # aws_access_key_id = " + fakeAWSKey},
+		{"yaml comment after a key", "aws_access_key_id: " + fakeAWSKey + " # old value"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			findings := d.matchLine(tt.line)
+			if len(findings) == 0 {
+				t.Fatalf("matchLine(%q) reported nothing; a commented-out "+
+					"credential is still committed", tt.line)
+			}
+
+			var found bool
+			for _, f := range findings {
+				if f.RuleID == "LEAK-001" {
+					found = true
+					if f.Severity != awsKeyRuleSeverity(t, d) {
+						t.Errorf("Severity = %v, want the rule's own severity %v — "+
+							"a commented secret is not a lesser one",
+							f.Severity, awsKeyRuleSeverity(t, d))
+					}
+				}
+			}
+			if !found {
+				t.Errorf("LEAK-001 did not fire on %q", tt.line)
+			}
+		})
+	}
+}
+
+// awsKeyRuleSeverity reads the configured severity of the AWS key rule so the
+// assertion above tracks the rule instead of hardcoding a level.
+func awsKeyRuleSeverity(t *testing.T, d *Detector) config.Severity {
+	t.Helper()
+	for _, r := range d.rules {
+		if r.ID == "LEAK-001" {
+			return r.Severity
+		}
+	}
+	t.Fatal("rule LEAK-001 not found")
+	return ""
 }
 
 func TestRedactSecret(t *testing.T) {

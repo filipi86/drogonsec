@@ -625,11 +625,16 @@ func (d *Detector) ScanLine(line string) []LeakFinding {
 // ScanLine skipped the entropy gate the other two applied, so a rule could
 // look fine in a test and be filtered away in a real scan.
 func (d *Detector) matchLine(line string) []LeakFinding {
-	trimmed := strings.TrimSpace(line)
-
-	// Empty lines carry nothing, and a leading "#" marks the line as a comment
-	// in every configuration format we scan.
-	if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
+	// Empty lines carry nothing.
+	//
+	// Comments are NOT skipped. A credential commented out in a committed file
+	// is still a committed credential: it is in the working tree, it is in the
+	// git history, and commenting it out is what people do instead of rotating
+	// it. Skipping "#" lines used to hide exactly that case in .env, YAML and
+	// Dockerfiles, where "#" is the comment marker. The entropy gate and the
+	// placeholder suppression still apply, so documentation samples do not
+	// become findings.
+	if len(strings.TrimSpace(line)) == 0 {
 		return nil
 	}
 

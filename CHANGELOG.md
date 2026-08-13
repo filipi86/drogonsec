@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Secrets in commented-out lines are now reported**, at the rule's own
+  severity. The detector skipped every line starting with `#`, which is the
+  comment marker in `.env` files, YAML, and Dockerfiles — exactly where
+  credentials get commented out instead of rotated. A credential in a committed
+  file is committed whether or not a `#` precedes it. The entropy gate and
+  placeholder suppression still apply, so documentation samples are unaffected.
 - **Version is defined in one place** (`internal/version`), injected at link
   time and recovered from the embedded build information when it is not. It was
   previously duplicated across the banner, the `version` command, the scan
