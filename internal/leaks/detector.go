@@ -40,6 +40,18 @@ type LeakRule struct {
 	Confidence  string // HIGH, MEDIUM, LOW
 }
 
+const (
+	// maxLineLength caps the line length fed to the rule patterns. Legitimate
+	// secrets never come close; minified or binary-ish content can drive
+	// catastrophic backtracking on the more complex regexes.
+	maxLineLength = 10000
+
+	// minGenericEntropy is the Shannon entropy a match must reach for the
+	// generic and high-entropy rules to report it. Below it, the match is
+	// almost always a placeholder such as "your-api-key-here".
+	minGenericEntropy = 3.5
+)
+
 // Detector handles secret and credential leak detection
 type Detector struct {
 	rules []LeakRule
@@ -77,42 +89,10 @@ func (d *Detector) ScanFile(filePath string) ([]LeakFinding, error) {
 	lines := strings.Split(string(content), "\n")
 
 	for lineNum, line := range lines {
-		// Skip empty lines and comments (simple heuristic)
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		// Guard against ReDoS: skip lines that are unreasonably long.
-		// Legitimate secrets never exceed 10 000 chars; minified/binary
-		// content can cause catastrophic backtracking on complex regexes.
-		if len(line) > 10000 {
-			continue
-		}
-
-		for _, rule := range d.rules {
-			if rule.Pattern.MatchString(line) {
-				match := rule.Pattern.FindString(line)
-				redacted := redactSecret(match)
-
-				entropy := 0.0
-				if strings.Contains(rule.Name, "Generic") || strings.Contains(rule.Name, "High Entropy") {
-					entropy = shannonEntropy(match)
-					if entropy < 3.5 {
-						continue // skip low entropy matches (likely false positives)
-					}
-				}
-
-				findings = append(findings, LeakFinding{
-					Type:        rule.Name,
-					File:        filePath,
-					Line:        lineNum + 1,
-					Match:       redacted,
-					RuleID:      rule.ID,
-					Severity:    rule.Severity,
-					Description: rule.Description,
-					Entropy:     entropy,
-				})
-			}
+		for _, f := range d.matchLine(line) {
+			f.File = filePath
+			f.Line = lineNum + 1
+			findings = append(findings, f)
 		}
 	}
 
@@ -179,46 +159,21 @@ func (d *Detector) ScanGitHistory(repoPath string) ([]LeakFinding, error) {
 
 			lines := strings.Split(string(content), "\n")
 			for lineNum, line := range lines {
-				trimmed := strings.TrimSpace(line)
-				if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
-					continue
-				}
-				if len(line) > 10000 {
-					continue
-				}
-
-				for _, rule := range d.rules {
-					if rule.Pattern.MatchString(line) {
-						match := rule.Pattern.FindString(line)
-
-						// Dedup key: rule + file + line content hash
-						key := fmt.Sprintf("%s:%s:%d:%s", rule.ID, f.Name, lineNum, match[:min(len(match), 20)])
-						if seen[key] {
-							continue
-						}
-						seen[key] = true
-
-						entropy := 0.0
-						if strings.Contains(rule.Name, "Generic") || strings.Contains(rule.Name, "High Entropy") {
-							entropy = shannonEntropy(match)
-							if entropy < 3.5 {
-								continue
-							}
-						}
-
-						findings = append(findings, LeakFinding{
-							Type:         rule.Name,
-							File:         f.Name,
-							Line:         lineNum + 1,
-							Match:        redactSecret(match),
-							RuleID:       rule.ID,
-							Severity:     rule.Severity,
-							Description:  rule.Description,
-							Entropy:      entropy,
-							InGitHistory: true,
-							CommitHash:   c.Hash.String()[:8],
-						})
+				for _, finding := range d.matchLine(line) {
+					// The same secret is reachable from every commit that
+					// carries the file, so report it once per rule, path and
+					// line rather than once per commit.
+					key := fmt.Sprintf("%s:%s:%d:%s", finding.RuleID, f.Name, lineNum, finding.Match)
+					if seen[key] {
+						continue
 					}
+					seen[key] = true
+
+					finding.File = f.Name
+					finding.Line = lineNum + 1
+					finding.InGitHistory = true
+					finding.CommitHash = c.Hash.String()[:8]
+					findings = append(findings, finding)
 				}
 			}
 			return nil
@@ -230,14 +185,6 @@ func (d *Detector) ScanGitHistory(repoPath string) ([]LeakFinding, error) {
 	}
 
 	return findings, nil
-}
-
-// min returns the smaller of two ints
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // loadRules registers all leak detection patterns
@@ -659,24 +606,63 @@ func shouldSkip(filePath string) bool {
 	return false
 }
 
-// ScanLine scans a single line for secrets (used for testing)
+// ScanLine scans a single line for secrets. It goes through the same matcher
+// as the file and history scanners, so what it reports is what a real scan
+// reports.
 func (d *Detector) ScanLine(line string) []LeakFinding {
 	var findings []LeakFinding
 	scanner := bufio.NewScanner(strings.NewReader(line))
 	for scanner.Scan() {
-		l := scanner.Text()
-		for _, rule := range d.rules {
-			if rule.Pattern.MatchString(l) {
-				match := rule.Pattern.FindString(l)
-				findings = append(findings, LeakFinding{
-					Type:        rule.Name,
-					Match:       redactSecret(match),
-					RuleID:      rule.ID,
-					Severity:    rule.Severity,
-					Description: rule.Description,
-				})
+		findings = append(findings, d.matchLine(scanner.Text())...)
+	}
+	return findings
+}
+
+// matchLine applies every rule to one line and returns the findings with their
+// rule-derived fields filled in; the caller adds the location. This is the one
+// place the decision "is this line a leak" is made. It used to be written out
+// separately in each of the three scanners, and they had already drifted —
+// ScanLine skipped the entropy gate the other two applied, so a rule could
+// look fine in a test and be filtered away in a real scan.
+func (d *Detector) matchLine(line string) []LeakFinding {
+	trimmed := strings.TrimSpace(line)
+
+	// Empty lines carry nothing, and a leading "#" marks the line as a comment
+	// in every configuration format we scan.
+	if len(trimmed) == 0 || strings.HasPrefix(trimmed, "#") {
+		return nil
+	}
+
+	// Guard against ReDoS: skip lines that are unreasonably long.
+	// Legitimate secrets never exceed maxLineLength chars; minified/binary
+	// content can cause catastrophic backtracking on complex regexes.
+	if len(line) > maxLineLength {
+		return nil
+	}
+
+	var findings []LeakFinding
+	for _, rule := range d.rules {
+		if !rule.Pattern.MatchString(line) {
+			continue
+		}
+		match := rule.Pattern.FindString(line)
+
+		entropy := 0.0
+		if strings.Contains(rule.Name, "Generic") || strings.Contains(rule.Name, "High Entropy") {
+			entropy = shannonEntropy(match)
+			if entropy < minGenericEntropy {
+				continue // low entropy: a placeholder rather than a secret
 			}
 		}
+
+		findings = append(findings, LeakFinding{
+			Type:        rule.Name,
+			Match:       redactSecret(match),
+			RuleID:      rule.ID,
+			Severity:    rule.Severity,
+			Description: rule.Description,
+			Entropy:     entropy,
+		})
 	}
 	return findings
 }

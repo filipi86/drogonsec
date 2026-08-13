@@ -64,7 +64,8 @@
       "Bash(gh issue *)",
       "Bash(go doc *)",
       "Bash(gh pr *)",
-      "Bash(wait)"
+      "Bash(wait)",
+      "Bash(grep -iA8 \"summary\\\\|Total\")"
     ]
   }
 }

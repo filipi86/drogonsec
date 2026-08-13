@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`requirements.txt` versions kept their environment markers and comments**:
   `requests==2.31.0 ; python_version < "3.12"` yielded the whole trailing string
   as the version, which matches no advisory.
+- **`ScanLine` did not apply the entropy gate** the file and git-history
+  scanners applied, so it reported matches a real scan discards. The three
+  scanners now share one matcher and cannot drift apart again.
 
 ### Changed
 
