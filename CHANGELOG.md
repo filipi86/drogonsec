@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **SCA findings carried no CVE, description, severity or fix.** OSV's
+  `/v1/querybatch` answers with identifiers only — each vulnerability is
+  `{id, modified}` and nothing more — so every field that makes a finding
+  actionable was empty: the OSV id stood in for the CVE, there was no
+  description, the severity defaulted uniformly to HIGH with a CVSS of 0, and
+  there was no version to upgrade to. Each advisory's full record is now
+  fetched from `/v1/vulns/{id}`, once per advisory and with bounded
+  concurrency; an advisory whose details cannot be fetched is still reported.
+- **The suggested upgrade could be a downgrade.** An advisory patches several
+  release branches at once — CVE-2022-28346 lists 2.2.28, 3.2.13 and 4.0.4 —
+  and the first one in the list was taken, so a project on Django 3.2.12 was
+  told to "upgrade" to 2.2.28. The lowest fix that is actually ahead of the
+  installed version is chosen, keeping the advice on the project's own branch
+  when that branch has a fix.
+- **SCA findings never reached SARIF**, and therefore never reached GitHub
+  Code Scanning, even though the text, JSON and HTML reporters all included
+  them.
 - **SCA missed every Python and PHP dependency.** The manifest parsers label
   them `pypi` and `packagist`, but the OSV client only recognised `pip` and
   `composer`, so those dependencies were dropped from the query without a

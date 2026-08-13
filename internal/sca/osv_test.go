@@ -285,21 +285,139 @@ func TestParseCVSSDefaultsToHighWithoutAScore(t *testing.T) {
 }
 
 func TestExtractFixedVersion(t *testing.T) {
-	t.Run("returns the fixed event", func(t *testing.T) {
-		affected := []osvAffected{{Ranges: []osvRange{{
-			Events: []osvEvent{{Introduced: "1.0.0"}, {Fixed: "1.2.3"}},
-		}}}}
-		if got := extractFixedVersion(affected); got != "1.2.3" {
-			t.Errorf("extractFixedVersion() = %q, want %q", got, "1.2.3")
+	// ranges builds an advisory whose affected entries list the given fixes,
+	// one range each, the way OSV reports a patch per release branch.
+	ranges := func(fixes ...string) []osvAffected {
+		var affected []osvAffected
+		for _, f := range fixes {
+			affected = append(affected, osvAffected{Ranges: []osvRange{{
+				Events: []osvEvent{{Introduced: "0"}, {Fixed: f}},
+			}}})
 		}
-	})
+		return affected
+	}
+
+	tests := []struct {
+		name     string
+		fixes    []string
+		current  string
+		want     string
+		wantWhy  string
+		affected []osvAffected
+	}{
+		{
+			name:    "single fix",
+			fixes:   []string{"1.2.3"},
+			current: "1.0.0",
+			want:    "1.2.3",
+		},
+		{
+			// CVE-2022-28346 patched 2.2.28, 3.2.13 and 4.0.4. A project on
+			// 3.2.12 must be sent to 3.2.13, not back to the 2.2 branch.
+			name:    "picks the fix on the branch the project is on",
+			fixes:   []string{"4.0.4", "3.2.13", "2.2.28"},
+			current: "3.2.12",
+			want:    "3.2.13",
+			wantWhy: "the lowest fix that is still an upgrade",
+		},
+		{
+			name:    "order in the advisory does not matter",
+			fixes:   []string{"2.2.28", "4.0.4", "3.2.13"},
+			current: "3.2.12",
+			want:    "3.2.13",
+		},
+		{
+			name:    "next branch when the current one has no fix",
+			fixes:   []string{"4.0.4", "2.2.28"},
+			current: "3.2.12",
+			want:    "4.0.4",
+		},
+		{
+			name:    "falls back to the lowest fix when none is an upgrade",
+			fixes:   []string{"2.2.28", "3.2.13"},
+			current: "4.0.0",
+			want:    "2.2.28",
+			wantWhy: "an imperfect target beats none",
+		},
+		{
+			name:    "handles a v prefix",
+			fixes:   []string{"v1.3.0", "v1.2.0"},
+			current: "v1.1.0",
+			want:    "v1.2.0",
+		},
+		{
+			name:    "ignores a pre-release suffix when ordering",
+			fixes:   []string{"1.3.0-rc1", "1.2.0"},
+			current: "1.1.0",
+			want:    "1.2.0",
+		},
+		{
+			name:    "unequal segment counts",
+			fixes:   []string{"1.2", "1.10.1"},
+			current: "1.1",
+			want:    "1.2",
+		},
+		{
+			name:    "compares segments numerically, not lexically",
+			fixes:   []string{"1.10.0", "1.9.0"},
+			current: "1.8.0",
+			want:    "1.9.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractFixedVersion(ranges(tt.fixes...), tt.current)
+			if got != tt.want {
+				msg := ""
+				if tt.wantWhy != "" {
+					msg = " (" + tt.wantWhy + ")"
+				}
+				t.Errorf("extractFixedVersion(%v, %q) = %q, want %q%s",
+					tt.fixes, tt.current, got, tt.want, msg)
+			}
+		})
+	}
 
 	t.Run("empty when the advisory has no fix", func(t *testing.T) {
 		affected := []osvAffected{{Ranges: []osvRange{{
 			Events: []osvEvent{{Introduced: "1.0.0"}, {LastAffected: "2.0.0"}},
 		}}}}
-		if got := extractFixedVersion(affected); got != "" {
+		if got := extractFixedVersion(affected, "1.5.0"); got != "" {
 			t.Errorf("extractFixedVersion() = %q, want empty", got)
 		}
 	})
+
+	t.Run("empty for an advisory with no affected entries", func(t *testing.T) {
+		if got := extractFixedVersion(nil, "1.0.0"); got != "" {
+			t.Errorf("extractFixedVersion(nil) = %q, want empty", got)
+		}
+	})
+}
+
+func TestCompareVersions(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want int
+	}{
+		{"1.0.0", "1.0.0", 0},
+		{"1.0.1", "1.0.0", 1},
+		{"1.0.0", "1.0.1", -1},
+		{"1.10.0", "1.9.0", 1}, // numeric, not lexical
+		{"2.0.0", "1.99.99", 1},
+		{"1.2", "1.2.0", 0}, // missing segments are zero
+		{"1.2.1", "1.2", 1}, // ...but a present one still counts
+		{"v1.0.0", "1.0.0", 0},
+		{"1.0.0-rc1", "1.0.0", 0}, // the suffix is ignored
+		{"", "", 0},
+		{"1.0.0", "", 1},
+		{"", "1.0.0", -1},
+		{"1.0.0", "1.0.x", -1}, // a non-numeric segment compares lexically
+	}
+
+	for _, tt := range tests {
+		if got := compareVersions(tt.a, tt.b); got != tt.want {
+			t.Errorf("compareVersions(%q, %q) = %d, want %d", tt.a, tt.b, got, tt.want)
+		}
+	}
 }
