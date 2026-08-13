@@ -17,17 +17,33 @@ const (
 	osvBatchMax = 1000 // OSV API batch limit
 )
 
-// OSV ecosystem mapping from our ecosystem names to OSV ecosystem names
+// osvEcosystemMap translates our ecosystem names into the names OSV uses.
+//
+// The keys MUST cover every ecosystem string the manifest parsers in engine.go
+// attach to a Dependency — an ecosystem missing from this map is skipped
+// silently, and the scan then reports no vulnerabilities for an entire
+// language. TestQueryBatchQueriesEveryParserEcosystem enforces that coupling.
+// The package-manager aliases are kept so a caller constructing a Dependency
+// by hand is not caught out by which of the two names we happened to pick.
 var osvEcosystemMap = map[string]string{
-	"npm":      "npm",
+	// Emitted by the parsers.
+	"npm":       "npm",
+	"pypi":      "PyPI",
+	"maven":     "Maven",
+	"go":        "Go",
+	"packagist": "Packagist",
+	"rubygems":  "RubyGems",
+	"pub":       "Pub",
+
+	// Package-manager aliases for the same ecosystems.
 	"pip":      "PyPI",
-	"maven":    "Maven",
-	"go":       "Go",
 	"composer": "Packagist",
-	"rubygems": "RubyGems",
-	"pub":      "Pub",
-	"cargo":    "crates.io",
-	"nuget":    "NuGet",
+	"gem":      "RubyGems",
+	"golang":   "Go",
+
+	// Ecosystems OSV covers that we have no parser for yet.
+	"cargo": "crates.io",
+	"nuget": "NuGet",
 }
 
 // ---- OSV API Request Types ----
@@ -91,11 +107,16 @@ type osvEvent struct {
 
 type osvClient struct {
 	http *http.Client
+	// baseURL is the batch-query endpoint. It is a field rather than a
+	// constant so tests can point the client at a local server instead of
+	// reaching out to api.osv.dev.
+	baseURL string
 }
 
 func newOSVClient() *osvClient {
 	return &osvClient{
-		http: &http.Client{Timeout: 30 * time.Second},
+		http:    &http.Client{Timeout: 30 * time.Second},
+		baseURL: osvBatchURL,
 	}
 }
 
@@ -128,6 +149,11 @@ func (c *osvClient) QueryBatch(deps []Dependency) ([]Finding, error) {
 
 func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 	queries := make([]osvQuery, 0, len(deps))
+	// queried records the dependency behind each query. Dependencies whose
+	// ecosystem OSV does not cover are skipped, so query i is not generally
+	// deps[i] — indexing the responses straight back into deps attributes a
+	// vulnerability to whichever package happens to sit at that offset.
+	queried := make([]Dependency, 0, len(deps))
 	for _, dep := range deps {
 		eco := osvEcosystemMap[strings.ToLower(dep.Ecosystem)]
 		if eco == "" {
@@ -137,6 +163,7 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 			Version: dep.Version,
 			Package: osvPackage{Name: dep.Name, Ecosystem: eco},
 		})
+		queried = append(queried, dep)
 	}
 
 	if len(queries) == 0 {
@@ -148,7 +175,7 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", osvBatchURL, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", c.baseURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -178,10 +205,10 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 
 	var findings []Finding
 	for idx, qr := range result.Results {
-		if idx >= len(deps) {
+		if idx >= len(queried) {
 			break
 		}
-		dep := deps[idx]
+		dep := queried[idx]
 		for _, vuln := range qr.Vulns {
 			findings = append(findings, osvVulnToFinding(vuln, dep))
 		}

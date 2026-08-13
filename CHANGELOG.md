@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`linux/arm64` release binary**, matching the platforms the Docker images
+  already covered.
+
+### Fixed
+
+- **SCA missed every Python and PHP dependency.** The manifest parsers label
+  them `pypi` and `packagist`, but the OSV client only recognised `pip` and
+  `composer`, so those dependencies were dropped from the query without a
+  warning and no advisory was ever reported for either ecosystem.
+- **SCA could attribute a vulnerability to the wrong package.** Dependencies
+  whose ecosystem OSV does not cover are skipped when the batch request is
+  built, but the responses were indexed back into the original list, shifting
+  every result past the first skipped dependency onto a different package.
+- **`Gemfile.lock` produced phantom dependencies.** Every parenthesised line was
+  read as a resolved gem, so the `DEPENDENCIES` section and each gem's own
+  requirements were parsed as versions like `~>` or `=`. Only the `specs:`
+  listing is read now.
+- **`requirements.txt` versions kept their environment markers and comments**:
+  `requests==2.31.0 ; python_version < "3.12"` yielded the whole trailing string
+  as the version, which matches no advisory.
+
+### Changed
+
+- **Version is defined in one place** (`internal/version`), injected at link
+  time and recovered from the embedded build information when it is not. It was
+  previously duplicated across the banner, the `version` command, the scan
+  report metadata, the Makefile and the CI build, and the `version` command
+  reported a hardcoded build date and Go version that had gone stale.
+
 ## [0.2.0] - 2026-08-13
 
 Precision release. The SAST engine went through an empirically-audited pass

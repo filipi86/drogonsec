@@ -329,6 +329,21 @@ func (p *RequirementsTXTParser) Parse(path string) ([]Dependency, error) {
 			continue
 		}
 
+		// Drop the environment marker and any trailing comment before reading
+		// the version. pip accepts `pkg==1.0 ; python_version < "3.12"  # why`,
+		// and neither suffix belongs to the version — carried along, they turn
+		// the version into prose that matches no advisory.
+		if idx := strings.Index(line, ";"); idx != -1 {
+			line = line[:idx]
+		}
+		if idx := strings.Index(line, "#"); idx != -1 {
+			line = line[:idx]
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
 		// Handle: package==1.0.0, package>=1.0.0, package~=1.0.0
 		for _, sep := range []string{"==", ">=", "<=", "~=", "!=", ">"} {
 			if idx := strings.Index(line, sep); idx != -1 {
@@ -363,22 +378,60 @@ func (p *GemfileParser) Parse(path string) ([]Dependency, error) {
 	var deps []Dependency
 	inSpecs := false
 	for _, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "GEM" {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		// Section headings (GEM, GIT, PLATFORMS, DEPENDENCIES, BUNDLED WITH)
+		// are unindented, and any of them ends the preceding specs listing.
+		// Only the specs listing holds resolved versions: DEPENDENCIES repeats
+		// the same gems with range constraints such as "rails (~> 7.1.0)".
+		if !strings.HasPrefix(line, " ") {
+			inSpecs = false
+			continue
+		}
+		if trimmed == "specs:" {
 			inSpecs = true
+			continue
 		}
-		if inSpecs && strings.Contains(line, "(") && strings.Contains(line, ")") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				name := strings.TrimSpace(parts[0])
-				version := strings.Trim(parts[1], "()")
-				deps = append(deps, Dependency{
-					Name: name, Version: version,
-					Ecosystem: "rubygems", File: path,
-				})
-			}
+		if !inSpecs {
+			continue
 		}
+
+		// Resolved gems sit at exactly four spaces of indentation. Anything
+		// deeper is that gem's own requirement on another gem — "actionpack
+		// (= 7.1.0)" — which carries an operator, not a resolved version.
+		if indent := len(line) - len(strings.TrimLeft(line, " ")); indent != 4 {
+			continue
+		}
+
+		name, version, ok := parseGemSpec(trimmed)
+		if !ok {
+			continue
+		}
+		deps = append(deps, Dependency{
+			Name: name, Version: version,
+			Ecosystem: "rubygems", File: path,
+		})
 	}
 	return deps, nil
+}
+
+// parseGemSpec splits a Gemfile.lock specs entry, "rack (2.2.8)", into its
+// name and resolved version. It reports false for anything that does not have
+// that exact shape.
+func parseGemSpec(line string) (name, version string, ok bool) {
+	open := strings.Index(line, " (")
+	if open == -1 || !strings.HasSuffix(line, ")") {
+		return "", "", false
+	}
+	name = strings.TrimSpace(line[:open])
+	version = strings.TrimSpace(line[open+2 : len(line)-1])
+	if name == "" || version == "" {
+		return "", "", false
+	}
+	return name, version, true
 }
 
 // GoModParser parses Go go.mod files
