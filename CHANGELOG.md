@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Findings are ordered by severity**, CRITICAL first and INFO last, in every
+  output: the terminal report, JSON, SARIF and HTML. Within a severity the
+  highest CVSS comes first, then the file and line, so two scans of unchanged
+  code produce identical reports and a diff between scans shows real changes
+  rather than reordering.
 - **`linux/arm64` release binary**, matching the platforms the Docker images
   already covered.
 

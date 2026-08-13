@@ -87,8 +87,11 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 		}
 	}
 
-	// Step 5: Drop documented false positives, then compute statistics.
+	// Step 5: Drop documented false positives, order what remains by severity,
+	// then compute statistics. Sorting here rather than in each writer is what
+	// makes every output format lead with the most critical findings.
 	a.applySuppressions(result)
+	SortFindings(result)
 	result.ComputeStats()
 
 	// Print summary
