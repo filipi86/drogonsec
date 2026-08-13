@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scanners applied, so it reported matches a real scan discards. The three
   scanners now share one matcher and cannot drift apart again.
 
+### Security
+
+- **The monitor no longer writes its access token to disk.** The clone URL
+  embedded the token as userinfo (`https://oauth2:TOKEN@host/repo.git`), and git
+  records the remote URL in the clone's `.git/config` — so every monitored scan
+  wrote the token in plaintext into its temporary workspace, where it outlived
+  the scan if the process was killed before cleanup. The token is now passed to
+  go-git out of band and the URL carries no credentials.
+
 ### Changed
 
 - **Secrets in commented-out lines are now reported**, at the rule's own

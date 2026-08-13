@@ -1,5 +1,7 @@
 package monitor
 
+import "github.com/go-git/go-git/v5/plumbing/transport"
+
 // PlatformClient abstracts GitHub and GitLab operations behind a single
 // interface so the webhook server and poller are platform-agnostic.
 type PlatformClient interface {
@@ -7,9 +9,14 @@ type PlatformClient interface {
 	// Used by the poller to detect new pushes without cloning.
 	GetBranchSHA(branch string) (string, error)
 
-	// CloneURL returns an authenticated HTTPS URL suitable for git clone.
-	// The embedded credential is the short-lived token; it is never logged.
+	// CloneURL returns the HTTPS URL to clone. It carries no credentials:
+	// git writes the remote URL into the clone's .git/config, so a token
+	// embedded here would be written to disk in plaintext.
 	CloneURL() string
+
+	// CloneAuth returns the credentials for the clone, supplied out of band
+	// so they stay in memory.
+	CloneAuth() transport.AuthMethod
 
 	// ValidateWebhookSignature verifies the platform-specific integrity
 	// signature on the raw request body:

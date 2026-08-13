@@ -11,6 +11,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 const githubAPIBase = "https://api.github.com"
@@ -81,9 +84,14 @@ func (c *githubClient) GetBranchSHA(branch string) (string, error) {
 }
 
 func (c *githubClient) CloneURL() string {
-	// Token embedded in HTTPS URL — only used for go-git's in-process clone,
-	// never written to disk or printed.
-	return fmt.Sprintf("https://oauth2:%s@github.com/%s.git", c.token, c.repo)
+	return fmt.Sprintf("https://github.com/%s.git", c.repo)
+}
+
+// CloneAuth supplies the token to go-git directly. Embedding it in the URL
+// instead would put it in the clone's .git/config on disk, since that is where
+// git records the remote it was cloned from.
+func (c *githubClient) CloneAuth() transport.AuthMethod {
+	return &githttp.BasicAuth{Username: "oauth2", Password: c.token}
 }
 
 // ValidateWebhookSignature verifies the X-Hub-Signature-256 header using

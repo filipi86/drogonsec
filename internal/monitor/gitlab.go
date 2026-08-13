@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/go-git/go-git/v5/plumbing/transport"
+	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 const gitlabAPIBase = "https://gitlab.com/api/v4"
@@ -82,8 +85,15 @@ func (c *gitlabClient) GetBranchSHA(branch string) (string, error) {
 	return result.Commit.ID, nil
 }
 
+// CloneAuth supplies the token to go-git directly. Embedding it in the URL
+// instead would put it in the clone's .git/config on disk, since that is where
+// git records the remote it was cloned from.
+func (c *gitlabClient) CloneAuth() transport.AuthMethod {
+	return &githttp.BasicAuth{Username: "oauth2", Password: c.token}
+}
+
 func (c *gitlabClient) CloneURL() string {
-	return fmt.Sprintf("https://oauth2:%s@gitlab.com/%s.git", c.token, c.repo)
+	return fmt.Sprintf("https://gitlab.com/%s.git", c.repo)
 }
 
 // ValidateWebhookSignature validates the X-Gitlab-Token header.

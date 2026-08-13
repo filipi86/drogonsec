@@ -41,7 +41,7 @@ func cloneAndScan(cfg *Config, client PlatformClient, branch string) error {
 		color.CyanString(branch))
 
 	// Shallow clone — depth 1, single branch.
-	if err := shallowClone(client.CloneURL(), branch, tmpDir); err != nil {
+	if err := shallowClone(client.CloneURL(), branch, tmpDir, client.CloneAuth()); err != nil {
 		return fmt.Errorf("git clone failed: %w", err)
 	}
 
