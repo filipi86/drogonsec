@@ -321,11 +321,12 @@ Every PR against `main`, `staging`, or `development` runs the full pipeline auto
 
 ### Dependency Updates (Dependabot)
 
-Dependency updates are handled automatically via **Dependabot** (every Monday):
+Dependency updates are opened automatically via **Dependabot** (every Monday):
 
-- **Patch updates** — CI runs, auto-merges if all gates pass
-- **Minor / Major updates** — CI runs, requires manual review before merge
-- **GitHub Actions updates** — always require manual review
+- **Every update** — CI runs, then a maintainer reviews and merges
+- **Patch updates** — lowest risk, usually merged as soon as the gates are green
+- **Minor / Major updates** — reviewed for breaking changes before merge
+- **GitHub Actions updates** — reviewed and re-pinned to a commit SHA
 
 You do not need to update dependencies manually in your PRs.
 

@@ -137,16 +137,19 @@ Dependabot runs every Monday at 09:00 (America/Sao_Paulo) and opens PRs for:
 - **Go modules** (`go.mod`) — grouped into a single PR
 - **GitHub Actions** — one PR per action
 
-### Auto-merge policy
+### Merge policy
 
 | Update type | Behaviour |
 |-------------|-----------|
-| `patch` (x.y.**Z**) | CI runs → auto-merges if all gates pass |
-| `minor` (x.**Y**.0) | CI runs → waits for manual review |
-| `major` (**X**.0.0) | CI runs → waits for manual review |
-| GitHub Actions | Always manual review |
+| `patch` (x.y.**Z**) | CI runs → maintainer merges once all gates are green |
+| `minor` (x.**Y**.0) | CI runs → reviewed for breaking changes |
+| `major` (**X**.0.0) | CI runs → reviewed for breaking changes |
+| GitHub Actions | CI runs → reviewed and re-pinned to a commit SHA |
 
-Major and minor updates require manual review because they may introduce breaking changes or expand the attack surface.
+No dependency update merges itself. GitHub auto-merge is disabled on this
+repository and the `main` ruleset requires one approving review, so every
+Dependabot PR lands through a human decision — an update that passes CI is
+still an unreviewed change to the supply chain.
 
 ---
 
