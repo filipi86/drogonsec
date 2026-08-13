@@ -460,6 +460,7 @@ type sarifRule struct {
 	Name             string                 `json:"name"`
 	ShortDescription sarifMessage           `json:"shortDescription"`
 	FullDescription  sarifMessage           `json:"fullDescription"`
+	HelpURI          string                 `json:"helpUri,omitempty"`
 	Properties       map[string]interface{} `json:"properties"`
 }
 
@@ -564,6 +565,50 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
 					Region:           sarifRegion{StartLine: sarifStartLine(f.Line)},
+				},
+			}},
+		})
+	}
+
+	// Add SCA findings. SARIF is what reaches GitHub Code Scanning, so leaving
+	// the supply-chain engine out of it hides those vulnerabilities from the
+	// Security tab even though every other reporter shows them.
+	for _, f := range result.SCAFindings {
+		// The advisory identifier is the rule: one CVE is one issue, however
+		// many manifests happen to pull the affected package in.
+		ruleID := f.CVE
+		if !ruleSet[ruleID] {
+			rules = append(rules, sarifRule{
+				ID:               ruleID,
+				Name:             strings.ReplaceAll(ruleID, " ", ""),
+				ShortDescription: sarifMessage{Text: fmt.Sprintf("%s in %s", ruleID, f.PackageName)},
+				FullDescription:  sarifMessage{Text: f.Description},
+				HelpURI:          safeURL(f.Advisory),
+				Properties: map[string]interface{}{
+					"severity":  string(f.Severity),
+					"owasp":     string(f.OWASP),
+					"cvss":      f.CVSS,
+					"ecosystem": f.Ecosystem,
+				},
+			})
+			ruleSet[ruleID] = true
+		}
+
+		message := fmt.Sprintf("%s %s is affected by %s", f.PackageName, f.PackageVersion, ruleID)
+		if f.FixedVersion != "" {
+			message += fmt.Sprintf(" — upgrade to %s or later", f.FixedVersion)
+		}
+
+		results = append(results, sarifResult{
+			RuleID:  ruleID,
+			Level:   sarifLevel(f.Severity),
+			Message: sarifMessage{Text: message},
+			Locations: []sarifLocation{{
+				PhysicalLocation: sarifPhysicalLocation{
+					// The manifest that declares the dependency is the closest
+					// thing to a location; it has no line of its own.
+					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.ManifestFile)},
+					Region:           sarifRegion{StartLine: sarifStartLine(0)},
 				},
 			}},
 		})
