@@ -122,7 +122,7 @@ Drogonsec Security Scanner
 ### JSON
 ```json
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "stats": { "total_findings": 5, "critical": 1, "high": 3 },
   "sast_findings": [ ... ],
   "sca_findings": [ ... ],

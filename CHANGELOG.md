@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-13
+
+Correctness release for the SCA engine. Writing the first tests for it turned
+into an audit: dependencies of two ecosystems were never checked at all,
+advisories could be attributed to the wrong package, and the findings that did
+come back were missing every field needed to act on them. Findings are now also
+ordered by severity in every output.
+
 ### Added
 
 - **Findings are ordered by severity**, CRITICAL first and INFO last, in every
@@ -169,6 +177,7 @@ binary, built for developers and CI/CD pipelines.
 - **CI/CD**: GitHub Actions pipeline with build, test, lint, govulncheck, and a
   self-scan security gate.
 
-[Unreleased]: https://github.com/filipi86/drogonsec/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/filipi86/drogonsec/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/filipi86/drogonsec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/filipi86/drogonsec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/filipi86/drogonsec/releases/tag/v0.1.0
