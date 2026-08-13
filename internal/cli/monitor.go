@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filipi86/drogonsec/internal/config"
 	"github.com/filipi86/drogonsec/internal/monitor"
+	"github.com/filipi86/drogonsec/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -208,15 +209,15 @@ func runMonitor(_ *cobra.Command, _ []string) error {
 	bold := color.New(color.FgMagenta, color.Bold).SprintFunc()
 	cyan := color.CyanString
 
-	fmt.Printf("\n  %s  Branch Monitor\n", bold("DrogonSec"))
-	fmt.Printf("  %-10s %s\n", "Platform:", cyan(monPlatform))
-	fmt.Printf("  %-10s %s\n", "Repo:", cyan(monRepo))
-	fmt.Printf("  %-10s %s\n", "Branch:", cyan(monBranch))
-	fmt.Printf("  %-10s %s\n", "Mode:", cyan(monMode))
+	ui.Printf("\n  %s  Branch Monitor\n", bold("DrogonSec"))
+	ui.Printf("  %-10s %s\n", "Platform:", cyan(monPlatform))
+	ui.Printf("  %-10s %s\n", "Repo:", cyan(monRepo))
+	ui.Printf("  %-10s %s\n", "Branch:", cyan(monBranch))
+	ui.Printf("  %-10s %s\n", "Mode:", cyan(monMode))
 	if monMode == "poll" {
-		fmt.Printf("  %-10s %s\n", "Interval:", cyan(interval.String()))
+		ui.Printf("  %-10s %s\n", "Interval:", cyan(interval.String()))
 	}
-	fmt.Println()
+	ui.Println()
 
 	// ── Graceful shutdown ────────────────────────────────────────────────────
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

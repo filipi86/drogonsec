@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/filipi86/drogonsec/internal/ui"
 )
 
 type poller struct {
@@ -22,7 +23,7 @@ func newPoller(cfg *Config, client PlatformClient, scanFn func(string) error) *p
 // Run polls the branch on every tick and triggers a scan whenever the HEAD
 // SHA changes. It exits cleanly when ctx is cancelled (SIGINT/SIGTERM).
 func (p *poller) Run(ctx context.Context) error {
-	fmt.Printf("  %s Polling branch %s on %s every %s\n",
+	ui.Printf("  %s Polling branch %s on %s every %s\n",
 		color.CyanString("→"),
 		color.CyanString(p.cfg.Branch),
 		color.CyanString(p.cfg.Repo),
@@ -30,7 +31,7 @@ func (p *poller) Run(ctx context.Context) error {
 
 	// Check immediately on startup so the user gets feedback right away.
 	if err := p.check(); err != nil {
-		fmt.Printf("  %s Initial poll error: %v\n", color.YellowString("⚠"), err)
+		ui.Printf("  %s Initial poll error: %v\n", color.YellowString("⚠"), err)
 	}
 
 	ticker := time.NewTicker(p.cfg.Interval)
@@ -39,11 +40,11 @@ func (p *poller) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Printf("\n  %s Polling stopped.\n", color.CyanString("→"))
+			ui.Printf("\n  %s Polling stopped.\n", color.CyanString("→"))
 			return nil
 		case <-ticker.C:
 			if err := p.check(); err != nil {
-				fmt.Printf("  %s Poll error: %v\n", color.YellowString("⚠"), err)
+				ui.Printf("  %s Poll error: %v\n", color.YellowString("⚠"), err)
 			}
 		}
 	}
@@ -58,7 +59,7 @@ func (p *poller) check() error {
 	}
 
 	if sha == p.lastSHA {
-		fmt.Printf("  %s [%s] No changes on %s (%s)\n",
+		ui.Printf("  %s [%s] No changes on %s (%s)\n",
 			color.New(color.Faint).Sprint("·"),
 			time.Now().Format("15:04:05"),
 			p.cfg.Branch,
@@ -70,7 +71,7 @@ func (p *poller) check() error {
 	if p.lastSHA != "" {
 		prevLabel = p.lastSHA[:8]
 	}
-	fmt.Printf("  %s New commit: %s → %s\n",
+	ui.Printf("  %s New commit: %s → %s\n",
 		color.CyanString("→"), prevLabel, sha[:8])
 
 	if err := p.scanFn(p.cfg.Branch); err != nil {

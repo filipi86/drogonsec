@@ -7,6 +7,8 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/filipi86/drogonsec/internal/ui"
+
 	"github.com/filipi86/drogonsec/internal/version"
 )
 
@@ -117,48 +119,48 @@ func PrintDrogonBanner() {
 		return strings.Repeat(" ", pad) + content
 	}
 
-	fmt.Println()
-	fmt.Println(topBdr)
-	fmt.Println(boxLine(
+	ui.Println()
+	ui.Println(topBdr)
+	ui.Println(boxLine(
 		fr("DRG-0x1") + fr(" ▸▸ ") +
 			bold("NEURAL THREAT SCANNER") +
 			dim("  │  SAST · SCA · LEAKS · GIT-HISTORY · IaC") +
 			fr(theme.envLabel)))
-	fmt.Println(midBdr)
+	ui.Println(midBdr)
 
 	// ── DROGONSEC — large ASCII title ─────────────────────────────────────────
-	fmt.Println(boxLine(title(` ██████╗ ██████╗  ██████╗  ██████╗  ██████╗ ███╗  ██╗███████╗███████╗ ██████╗`)))
-	fmt.Println(boxLine(title(` ██╔══██╗██╔══██╗██╔═══██╗██╔════╝ ██╔═══██╗████╗ ██║██╔════╝██╔════╝██╔════╝`)))
-	fmt.Println(boxLine(title(` ██║  ██║██████╔╝██║   ██║██║  ███╗██║   ██║██╔██╗██║███████╗█████╗  ██║     `)))
-	fmt.Println(boxLine(title(` ██║  ██║██╔══██╗██║   ██║██║   ██║██║   ██║██║██╗██║╚════██║██╔══╝  ██║     `)))
-	fmt.Println(boxLine(title(` ██████╔╝██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝██║╚████║███████║███████╗╚██████╗`)))
-	fmt.Println(boxLine(title(` ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝ ╚═══╝╚══════╝╚══════╝ ╚═════╝`)))
+	ui.Println(boxLine(title(` ██████╗ ██████╗  ██████╗  ██████╗  ██████╗ ███╗  ██╗███████╗███████╗ ██████╗`)))
+	ui.Println(boxLine(title(` ██╔══██╗██╔══██╗██╔═══██╗██╔════╝ ██╔═══██╗████╗ ██║██╔════╝██╔════╝██╔════╝`)))
+	ui.Println(boxLine(title(` ██║  ██║██████╔╝██║   ██║██║  ███╗██║   ██║██╔██╗██║███████╗█████╗  ██║     `)))
+	ui.Println(boxLine(title(` ██║  ██║██╔══██╗██║   ██║██║   ██║██║   ██║██║██╗██║╚════██║██╔══╝  ██║     `)))
+	ui.Println(boxLine(title(` ██████╔╝██║  ██║╚██████╔╝╚██████╔╝╚██████╔╝██║╚████║███████║███████╗╚██████╗`)))
+	ui.Println(boxLine(title(` ╚═════╝ ╚═╝  ╚═╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝ ╚═══╝╚══════╝╚══════╝ ╚═════╝`)))
 
 	// ── Security statement — centered inside frame ────────────────────────────
-	fmt.Println(midBdr)
+	ui.Println(midBdr)
 	stmt := nMag("◆") + " " + bold("HUNT VULNERABILITIES") + "  " +
 		nMag("◆") + " " + bold("BREAK WALLS") + "  " +
 		nMag("◆") + " " + bold("SECURE CODE") + "  " +
 		nMag("◆")
-	fmt.Println(boxLine(centerIn(stmt)))
+	ui.Println(boxLine(centerIn(stmt)))
 
 	// ── Bottom box: capabilities + author tagline ─────────────────────────────
-	fmt.Println(midBdr)
-	fmt.Println(boxLine(
+	ui.Println(midBdr)
+	ui.Println(boxLine(
 		gn("SAST") + dim(" │ ") +
 			gn("SCA") + dim(" │ ") +
 			gn("LEAKS") + dim(" │ ") +
 			gn("GIT-HISTORY") + dim(" │ ") +
 			gn("IaC") + dim(" │ ") +
 			gn("Remediation AI")))
-	fmt.Println(boxLine(
+	ui.Println(boxLine(
 		fr("►") + " " +
 			nYel("Created by Filipi Pires") +
 			dim(" │ "+version.Short()+" │ OWASP 2025 │ ") +
 			fr("Maintained by: CROSS-INTEL") +
 			" " + fr("◄")))
-	fmt.Println(botBdr)
-	fmt.Println()
+	ui.Println(botBdr)
+	ui.Println()
 }
 
 // ── Scan banner ───────────────────────────────────────────────────────────────
@@ -172,22 +174,22 @@ func PrintScanBanner(path string, sast, sca, leaks, ai bool, format string, ente
 	width := 60
 	border := cyan(repeatChar("─", width))
 
-	fmt.Println()
-	fmt.Printf("  %s\n", border)
-	fmt.Printf("  %s\n", white("Drogonsec Security Scanner"))
-	fmt.Printf("  %s\n", border)
-	fmt.Printf("  %s   %s\n", dim("Target"), white(path))
-	fmt.Printf("  %s\n", border)
+	ui.Println()
+	ui.Printf("  %s\n", border)
+	ui.Printf("  %s\n", white("Drogonsec Security Scanner"))
+	ui.Printf("  %s\n", border)
+	ui.Printf("  %s   %s\n", dim("Target"), white(path))
+	ui.Printf("  %s\n", border)
 
-	fmt.Printf("  %s  %s   %s  %s   %s  %s   %s  %s\n",
+	ui.Printf("  %s  %s   %s  %s   %s  %s   %s  %s\n",
 		engineDot(sast), engineLabel("SAST", sast),
 		engineDot(sca), engineLabel("SCA", sca),
 		engineDot(leaks), engineLabel("Leaks", leaks),
 		engineDot(ai), aiLabel(ai, enterprise),
 	)
-	fmt.Printf("  %s\n", border)
-	fmt.Printf("  %s   %s\n", dim("Format"), white(format))
-	fmt.Printf("  %s\n\n", border)
+	ui.Printf("  %s\n", border)
+	ui.Printf("  %s   %s\n", dim("Format"), white(format))
+	ui.Printf("  %s\n\n", border)
 }
 
 // ── Scan summary ──────────────────────────────────────────────────────────────
@@ -208,17 +210,17 @@ func PrintScanSummary(total, critical, high, medium, low, info int,
 	border := cyan(repeatChar("─", width))
 	thick := cyan(repeatChar("═", width))
 
-	fmt.Println()
-	fmt.Printf("  %s\n", thick)
-	fmt.Printf("  %s  %s\n", cyan("📊"), white("SCAN SUMMARY"))
-	fmt.Printf("  %s\n", thick)
+	ui.Println()
+	ui.Printf("  %s\n", thick)
+	ui.Printf("  %s  %s\n", cyan("📊"), white("SCAN SUMMARY"))
+	ui.Printf("  %s\n", thick)
 
-	fmt.Printf("  %s %-20s  %s %-15s  %s %s\n",
+	ui.Printf("  %s %-20s  %s %-15s  %s %s\n",
 		dim("Files:"), bold(fmt.Sprintf("%d", files)),
 		dim("Duration:"), bold(duration),
 		dim("Total:"), bold(fmt.Sprintf("%d", total)),
 	)
-	fmt.Printf("  %s\n", border)
+	ui.Printf("  %s\n", border)
 
 	printVisualBar("  CRITICAL", critical, color.New(color.FgHiRed, color.Bold), "█", 30)
 	printVisualBar("  HIGH    ", high, color.New(color.FgRed), "█", 30)
@@ -226,30 +228,30 @@ func PrintScanSummary(total, critical, high, medium, low, info int,
 	printVisualBar("  LOW     ", low, color.New(color.FgCyan), "░", 30)
 	printVisualBar("  INFO    ", info, color.New(color.FgHiBlack), "·", 30)
 
-	fmt.Printf("  %s\n", border)
-	fmt.Printf("  %s  %-10s  %s  %-10s  %s  %s\n",
+	ui.Printf("  %s\n", border)
+	ui.Printf("  %s  %-10s  %s  %-10s  %s  %s\n",
 		color.New(color.FgHiYellow).Sprint("⚡ SAST"), bold(fmt.Sprintf("%d", sast)),
 		color.New(color.FgHiBlue).Sprint("📦 SCA"), bold(fmt.Sprintf("%d", sca)),
 		color.New(color.FgHiRed).Sprint("🔑 Leaks"), bold(fmt.Sprintf("%d", leaks)),
 	)
-	fmt.Printf("  %s\n", thick)
+	ui.Printf("  %s\n", thick)
 
 	if critical > 0 {
-		fmt.Printf("\n  %s\n\n",
+		ui.Printf("\n  %s\n\n",
 			color.New(color.FgHiRed, color.Bold).Sprint("🔴  CRITICAL vulnerabilities detected! Immediate action required."))
 	} else if high > 0 {
-		fmt.Printf("\n  %s\n\n",
+		ui.Printf("\n  %s\n\n",
 			color.New(color.FgRed, color.Bold).Sprint("🟠  HIGH severity vulnerabilities found. Review required."))
 	} else if total == 0 {
-		fmt.Printf("\n  %s\n\n",
+		ui.Printf("\n  %s\n\n",
 			color.New(color.FgHiGreen, color.Bold).Sprint("🟢  Clean! No vulnerabilities found."))
 	} else {
-		fmt.Printf("\n  %s\n\n",
+		ui.Printf("\n  %s\n\n",
 			color.New(color.FgHiYellow, color.Bold).Sprint("🟡  Low/Medium findings. Review when possible."))
 	}
 
 	if outputFile != "" {
-		fmt.Printf("  %s %s\n\n",
+		ui.Printf("  %s %s\n\n",
 			dim("Report saved:"),
 			color.New(color.FgHiCyan).Sprint(outputFile),
 		)
@@ -298,8 +300,8 @@ func printVisualBar(label string, count int, c *color.Color, char string, maxWid
 	}
 	countStr := fmt.Sprintf("%3d", count)
 	if count > 0 {
-		fmt.Printf("  %s  %s  %s\n", label, c.Sprint(countStr), c.Sprint(bar))
+		ui.Printf("  %s  %s  %s\n", label, c.Sprint(countStr), c.Sprint(bar))
 	} else {
-		fmt.Printf("  %s  %s\n", label, color.New(color.FgHiBlack).Sprint("  0"))
+		ui.Printf("  %s  %s\n", label, color.New(color.FgHiBlack).Sprint("  0"))
 	}
 }

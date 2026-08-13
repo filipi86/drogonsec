@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/filipi86/drogonsec/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -122,26 +123,26 @@ func runCompletionInstall(cmd *cobra.Command, _ []string) error {
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 
-	fmt.Println()
-	fmt.Printf("  %s\n\n", cyan("Tab completion install preview"))
-	fmt.Printf("  shell         : %s\n", yellow(shell))
-	fmt.Printf("  script path   : %s %s\n", yellow(scriptPath), color.New(color.FgHiBlack).Sprint("(mode 0600)"))
-	fmt.Printf("  profile       : %s\n", yellow(profile))
-	fmt.Printf("  appended line : %s\n", yellow(sourceLine))
-	fmt.Println()
+	ui.Println()
+	ui.Printf("  %s\n\n", cyan("Tab completion install preview"))
+	ui.Printf("  shell         : %s\n", yellow(shell))
+	ui.Printf("  script path   : %s %s\n", yellow(scriptPath), color.New(color.FgHiBlack).Sprint("(mode 0600)"))
+	ui.Printf("  profile       : %s\n", yellow(profile))
+	ui.Printf("  appended line : %s\n", yellow(sourceLine))
+	ui.Println()
 
 	if installDryRun {
-		fmt.Printf("  %s dry-run only — no files modified\n\n", green("✓"))
+		ui.Printf("  %s dry-run only — no files modified\n\n", green("✓"))
 		return nil
 	}
 
 	if !installYes {
-		fmt.Printf("  Proceed? [y/N]: ")
+		ui.Printf("  Proceed? [y/N]: ")
 		reader := bufio.NewReader(os.Stdin)
 		answer, _ := reader.ReadString('\n')
 		answer = strings.TrimSpace(strings.ToLower(answer))
 		if answer != "y" && answer != "yes" {
-			fmt.Printf("\n  %s aborted\n\n", yellow("!"))
+			ui.Printf("\n  %s aborted\n\n", yellow("!"))
 			return nil
 		}
 	}
@@ -175,8 +176,8 @@ func runCompletionInstall(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("append to profile: %w", err)
 	}
 
-	fmt.Printf("\n  %s completion installed for %s\n", green("✓"), cyan(shell))
-	fmt.Printf("  Open a new shell (or `source %s`) to activate.\n\n", profile)
+	ui.Printf("\n  %s completion installed for %s\n", green("✓"), cyan(shell))
+	ui.Printf("  Open a new shell (or `source %s`) to activate.\n\n", profile)
 	return nil
 }
 

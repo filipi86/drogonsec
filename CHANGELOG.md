@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The banner, progress bars, scan summary and warnings now go to stderr**,
+  leaving stdout for what the caller asked for: the findings report, the shell
+  completion script, the `version` and `rules list` output. `drogonsec scan .
+  --format json > report.json` previously wrote 58 lines of ASCII banner into
+  the file ahead of the JSON, so the result parsed as nothing at all; the same
+  applied to `sarif` and `cyclonedx`, and to any pipe. Nothing is hidden by
+  this — stderr goes to the terminal, so an interactive run looks exactly as it
+  did.
+
 ## [0.3.0] - 2026-08-13
 
 Correctness release for the SCA engine. Writing the first tests for it turned

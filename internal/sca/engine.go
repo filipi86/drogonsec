@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/filipi86/drogonsec/internal/config"
+	"github.com/filipi86/drogonsec/internal/ui"
 	"gopkg.in/yaml.v3"
 )
 
@@ -82,13 +83,13 @@ func (e *Engine) Analyze() ([]Finding, error) {
 		return nil, nil
 	}
 
-	fmt.Printf("  Found %d dependencies across %d manifest files\n", len(deps), e.countUniqueFiles(deps))
+	ui.Printf("  Found %d dependencies across %d manifest files\n", len(deps), e.countUniqueFiles(deps))
 
 	// Query OSV API for real vulnerability data, fall back to demo DB on error
 	osv := newOSVClient()
 	findings, err := osv.QueryBatch(deps)
 	if err != nil {
-		fmt.Printf("  OSV API unavailable (%v), falling back to local database\n", err)
+		ui.Printf("  OSV API unavailable (%v), falling back to local database\n", err)
 		findings = e.checkKnownVulnerabilities(deps)
 	}
 

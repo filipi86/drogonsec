@@ -15,6 +15,7 @@ import (
 	"github.com/filipi86/drogonsec/internal/analyzer"
 	"github.com/filipi86/drogonsec/internal/config"
 	"github.com/filipi86/drogonsec/internal/reporter"
+	"github.com/filipi86/drogonsec/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -158,7 +159,7 @@ func runScan(cmd *cobra.Command, args []string) error {
 			// Default provider: try to auto-detect local Ollama
 			if detectOllama() {
 				aiProvider = "ollama"
-				fmt.Printf("  %s Ollama detected locally — using local AI (model: %s)\n",
+				ui.Printf("  %s Ollama detected locally — using local AI (model: %s)\n",
 					color.CyanString("→"), resolveOllamaModel())
 			} else {
 				return fmt.Errorf("AI API key required. Use --ai-key flag, set AI_API_KEY env var, or install Ollama for free local AI")
@@ -271,7 +272,7 @@ func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {
 
 	// Verify AI backend is reachable before processing
 	if err := client.CheckHealth(); err != nil {
-		fmt.Printf("  %s AI unavailable: %s\n", color.RedString("✗"), err)
+		ui.Printf("  %s AI unavailable: %s\n", color.RedString("✗"), err)
 		return
 	}
 
@@ -303,7 +304,7 @@ func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {
 
 	dim := color.New(color.Faint).SprintFunc()
 
-	fmt.Printf("\n  %s Running AI remediation (%d findings)...\n\n",
+	ui.Printf("\n  %s Running AI remediation (%d findings)...\n\n",
 		color.CyanString("\U0001F916"), total)
 
 	totalStart := time.Now()
@@ -357,12 +358,12 @@ func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {
 		if itemErr != nil {
 			errCount++
 			lastErr = itemErr
-			fmt.Printf("%s%s%s\n", prefix, dim(dots), color.RedString("\u2717 error"))
+			ui.Printf("%s%s%s\n", prefix, dim(dots), color.RedString("\u2717 error"))
 		} else if elapsed < 100*time.Millisecond {
 			// Very fast = cache hit
-			fmt.Printf("%s%s%s\n", prefix, dim(dots), color.GreenString("\u26A1 cached"))
+			ui.Printf("%s%s%s\n", prefix, dim(dots), color.GreenString("\u26A1 cached"))
 		} else {
-			fmt.Printf("%s%s%s\n", prefix, dim(dots), dim(fmt.Sprintf("%.1fs", elapsed.Seconds())))
+			ui.Printf("%s%s%s\n", prefix, dim(dots), dim(fmt.Sprintf("%.1fs", elapsed.Seconds())))
 		}
 	}
 
@@ -371,9 +372,9 @@ func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {
 	newCalls := total - errCount - cached
 
 	if errCount > 0 {
-		fmt.Printf("\n  %s AI enrichment: %d error(s): %v\n",
+		ui.Printf("\n  %s AI enrichment: %d error(s): %v\n",
 			color.YellowString("\u26A0"), errCount, lastErr)
-		fmt.Printf("    Tip: check --ai-provider and AI_API_KEY\n")
+		ui.Printf("    Tip: check --ai-provider and AI_API_KEY\n")
 	}
 
 	// Summary line
@@ -390,7 +391,7 @@ func enrichResult(result *analyzer.ScanResult, cfg *config.ScanConfig) {
 		summary = fmt.Sprintf(" (%s)", strings.Join(parts, ", "))
 	}
 
-	fmt.Printf("\n  %s AI enrichment complete%s \u2014 %s total\n",
+	ui.Printf("\n  %s AI enrichment complete%s \u2014 %s total\n",
 		color.GreenString("\u2713"), summary, dim(fmt.Sprintf("%.1fs", totalElapsed.Seconds())))
 }
 

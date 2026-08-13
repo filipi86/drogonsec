@@ -2,13 +2,13 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"runtime/debug"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/filipi86/drogonsec/internal/ui"
 )
 
 const (
@@ -63,10 +63,10 @@ func (s *webhookServer) Start(ctx context.Context) error {
 	if tls {
 		scheme = "https"
 	}
-	fmt.Printf("  %s Webhook server listening on %s://%s/webhook\n",
+	ui.Printf("  %s Webhook server listening on %s://%s/webhook\n",
 		color.CyanString("→"), scheme, s.cfg.ListenAddr)
 	if !tls {
-		fmt.Printf("  %s TLS not configured — use --tls-cert / --tls-key in production\n",
+		ui.Printf("  %s TLS not configured — use --tls-cert / --tls-key in production\n",
 			color.YellowString("⚠"))
 	}
 
@@ -139,12 +139,12 @@ func (s *webhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 func (s *webhookServer) runScan(branch string) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("  %s Scan panic on branch %q: %v\n%s\n",
+			ui.Printf("  %s Scan panic on branch %q: %v\n%s\n",
 				color.RedString("✗"), branch, r, debug.Stack())
 		}
 	}()
 	if err := s.scanFn(branch); err != nil {
-		fmt.Printf("  %s Scan error on branch %q: %v\n",
+		ui.Printf("  %s Scan error on branch %q: %v\n",
 			color.RedString("✗"), branch, err)
 	}
 }

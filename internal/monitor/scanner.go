@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filipi86/drogonsec/internal/analyzer"
 	"github.com/filipi86/drogonsec/internal/reporter"
+	"github.com/filipi86/drogonsec/internal/ui"
 )
 
 // cloneAndScan is the core scan trigger: it clones the branch to an isolated
@@ -29,13 +30,13 @@ func cloneAndScan(cfg *Config, client PlatformClient, branch string) error {
 	}
 	defer func() {
 		if err := os.RemoveAll(tmpDir); err != nil {
-			fmt.Printf("  %s Warning: could not remove temp dir %s: %v\n",
+			ui.Printf("  %s Warning: could not remove temp dir %s: %v\n",
 				color.YellowString("⚠"), tmpDir, err)
 		}
 	}()
 
 	start := time.Now()
-	fmt.Printf("\n  %s [%s] Scanning branch %s\n",
+	ui.Printf("\n  %s [%s] Scanning branch %s\n",
 		color.MagentaString("◆"),
 		time.Now().Format("2006-01-02 15:04:05"),
 		color.CyanString(branch))
@@ -78,7 +79,7 @@ func cloneAndScan(cfg *Config, client PlatformClient, branch string) error {
 		}
 		defer f.Close()
 		output = f
-		fmt.Printf("  %s Report written: %s\n", color.GreenString("✓"), fname)
+		ui.Printf("  %s Report written: %s\n", color.GreenString("✓"), fname)
 	}
 
 	return rep.Write(result, output)

@@ -1,13 +1,13 @@
 package analyzer
 
 import (
-	"fmt"
 	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/filipi86/drogonsec/internal/config"
+	"github.com/filipi86/drogonsec/internal/ui"
 )
 
 // suppressor applies the user-configured false-positive suppressions loaded
@@ -108,7 +108,7 @@ func (a *Analyzer) applySuppressions(result *ScanResult) {
 	result.SCAFindings = keptSCA
 
 	if suppressed > 0 {
-		fmt.Printf("\n  %s %d finding(s) suppressed via .drogonsec.yaml (documented false positives)\n",
+		ui.Printf("\n  %s %d finding(s) suppressed via .drogonsec.yaml (documented false positives)\n",
 			color.YellowString("⚠"), suppressed)
 	}
 }

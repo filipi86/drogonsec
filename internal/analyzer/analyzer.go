@@ -14,6 +14,7 @@ import (
 	"github.com/filipi86/drogonsec/internal/engine"
 	"github.com/filipi86/drogonsec/internal/leaks"
 	"github.com/filipi86/drogonsec/internal/sca"
+	"github.com/filipi86/drogonsec/internal/ui"
 	"github.com/filipi86/drogonsec/internal/version"
 	"github.com/schollz/progressbar/v3"
 )
@@ -38,7 +39,7 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 	}
 
 	// Step 1: Collect files to scan
-	fmt.Printf("  %s Discovering files...\n", color.CyanString("→"))
+	ui.Printf("  %s Discovering files...\n", color.CyanString("→"))
 	files, err := a.collectFiles()
 	if err != nil {
 		return nil, fmt.Errorf("file collection failed: %w", err)
@@ -57,7 +58,7 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 		result.LanguagesFound = append(result.LanguagesFound, lang)
 	}
 
-	fmt.Printf("  %s Found %d files across %d languages\n",
+	ui.Printf("  %s Found %d files across %d languages\n",
 		color.GreenString("✓"),
 		len(files),
 		len(langSet),
@@ -65,25 +66,25 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 
 	// Step 2: SAST Analysis
 	if a.cfg.EnableSAST {
-		fmt.Printf("\n  %s Running SAST analysis...\n", color.CyanString("→"))
+		ui.Printf("\n  %s Running SAST analysis...\n", color.CyanString("→"))
 		if err := a.runSAST(files, result); err != nil {
-			fmt.Printf("  %s SAST warning: %v\n", color.YellowString("⚠"), err)
+			ui.Printf("  %s SAST warning: %v\n", color.YellowString("⚠"), err)
 		}
 	}
 
 	// Step 3: Leak Detection
 	if a.cfg.EnableLeaks {
-		fmt.Printf("\n  %s Running leak detection...\n", color.CyanString("→"))
+		ui.Printf("\n  %s Running leak detection...\n", color.CyanString("→"))
 		if err := a.runLeakDetection(files, result); err != nil {
-			fmt.Printf("  %s Leak detection warning: %v\n", color.YellowString("⚠"), err)
+			ui.Printf("  %s Leak detection warning: %v\n", color.YellowString("⚠"), err)
 		}
 	}
 
 	// Step 4: SCA Analysis
 	if a.cfg.EnableSCA {
-		fmt.Printf("\n  %s Running SCA analysis...\n", color.CyanString("→"))
+		ui.Printf("\n  %s Running SCA analysis...\n", color.CyanString("→"))
 		if err := a.runSCA(result); err != nil {
-			fmt.Printf("  %s SCA warning: %v\n", color.YellowString("⚠"), err)
+			ui.Printf("  %s SCA warning: %v\n", color.YellowString("⚠"), err)
 		}
 	}
 
@@ -181,6 +182,7 @@ func isTestPath(p string) bool {
 
 func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 	bar := progressbar.NewOptions(len(files),
+		progressbar.OptionSetWriter(ui.Out),
 		progressbar.OptionSetDescription("  SAST"),
 		progressbar.OptionSetWidth(40),
 		progressbar.OptionShowCount(),
@@ -257,7 +259,7 @@ func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 		}
 	}
 
-	fmt.Printf("\n  %s SAST: %d findings\n",
+	ui.Printf("\n  %s SAST: %d findings\n",
 		color.GreenString("✓"),
 		len(result.SASTFindings),
 	)
@@ -267,6 +269,7 @@ func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 // runLeakDetection executes the leaks detection engine
 func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 	bar := progressbar.NewOptions(len(files),
+		progressbar.OptionSetWriter(ui.Out),
 		progressbar.OptionSetDescription("  Leaks"),
 		progressbar.OptionSetWidth(40),
 		progressbar.OptionShowCount(),
@@ -318,7 +321,7 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 
 	// Git history scan
 	if a.cfg.GitHistory {
-		fmt.Printf("\n  %s Scanning git history...\n", color.CyanString("→"))
+		ui.Printf("\n  %s Scanning git history...\n", color.CyanString("→"))
 		gitFindings, err := detector.ScanGitHistory(a.cfg.TargetPath)
 		if err == nil {
 			for _, gf := range gitFindings {
@@ -329,7 +332,7 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 		}
 	}
 
-	fmt.Printf("\n  %s Leaks: %d findings\n",
+	ui.Printf("\n  %s Leaks: %d findings\n",
 		color.GreenString("✓"),
 		len(result.LeakFindings),
 	)
@@ -365,7 +368,7 @@ func (a *Analyzer) runSCA(result *ScanResult) error {
 		}
 	}
 
-	fmt.Printf("  %s SCA: %d vulnerable dependencies found\n",
+	ui.Printf("  %s SCA: %d vulnerable dependencies found\n",
 		color.GreenString("✓"),
 		len(result.SCAFindings),
 	)
@@ -384,16 +387,16 @@ func (a *Analyzer) printSummary(result *ScanResult) {
 
 	dur := result.Duration.Round(time.Millisecond).String()
 
-	fmt.Println()
-	fmt.Printf("  %s\n", thick)
-	fmt.Printf("  %s  %s\n", cyan("📊"), white("SCAN SUMMARY"))
-	fmt.Printf("  %s\n", thick)
-	fmt.Printf("  %s %-18s  %s %-12s  %s %s\n",
+	ui.Println()
+	ui.Printf("  %s\n", thick)
+	ui.Printf("  %s  %s\n", cyan("📊"), white("SCAN SUMMARY"))
+	ui.Printf("  %s\n", thick)
+	ui.Printf("  %s %-18s  %s %-12s  %s %s\n",
 		dim("Files:"), bold(fmt.Sprintf("%d", result.FilesScanned)),
 		dim("Duration:"), bold(dur),
 		dim("Total:"), bold(fmt.Sprintf("%d", result.Stats.TotalFindings)),
 	)
-	fmt.Printf("  %s\n", border)
+	ui.Printf("  %s\n", border)
 
 	// Visual severity bars
 	printSeverityBar("  CRITICAL", result.Stats.CriticalCount, color.New(color.FgHiRed, color.Bold), "█")
@@ -402,32 +405,32 @@ func (a *Analyzer) printSummary(result *ScanResult) {
 	printSeverityBar("  LOW     ", result.Stats.LowCount, color.New(color.FgCyan), "░")
 	printSeverityBar("  INFO    ", result.Stats.InfoCount, color.New(color.FgHiBlack), "·")
 
-	fmt.Printf("  %s\n", border)
-	fmt.Printf("  %s %-8s   %s %-8s   %s %s\n",
+	ui.Printf("  %s\n", border)
+	ui.Printf("  %s %-8s   %s %-8s   %s %s\n",
 		color.New(color.FgHiYellow).Sprint("⚡ SAST"), bold(fmt.Sprintf("%d", result.Stats.SASTCount)),
 		color.New(color.FgHiBlue).Sprint("📦 SCA"), bold(fmt.Sprintf("%d", result.Stats.SCACount)),
 		color.New(color.FgHiRed).Sprint("🔑 Leaks"), bold(fmt.Sprintf("%d", result.Stats.LeaksCount)),
 	)
-	fmt.Printf("  %s\n", thick)
+	ui.Printf("  %s\n", thick)
 
 	// Verdict
 	switch {
 	case result.Stats.CriticalCount > 0:
-		fmt.Printf("\n  %s\n\n", color.New(color.FgHiRed, color.Bold).Sprint(
+		ui.Printf("\n  %s\n\n", color.New(color.FgHiRed, color.Bold).Sprint(
 			"🔴  CRITICAL vulnerabilities detected! Immediate action required."))
 	case result.Stats.HighCount > 0:
-		fmt.Printf("\n  %s\n\n", color.New(color.FgRed, color.Bold).Sprint(
+		ui.Printf("\n  %s\n\n", color.New(color.FgRed, color.Bold).Sprint(
 			"🟠  HIGH severity vulnerabilities found. Review required."))
 	case result.Stats.TotalFindings == 0:
-		fmt.Printf("\n  %s\n\n", color.New(color.FgHiGreen, color.Bold).Sprint(
+		ui.Printf("\n  %s\n\n", color.New(color.FgHiGreen, color.Bold).Sprint(
 			"🟢  Clean! No vulnerabilities found."))
 	default:
-		fmt.Printf("\n  %s\n\n", color.New(color.FgHiYellow, color.Bold).Sprint(
+		ui.Printf("\n  %s\n\n", color.New(color.FgHiYellow, color.Bold).Sprint(
 			"🟡  Low/Medium findings. Review when possible."))
 	}
 
 	if _, err := os.Stat(a.cfg.TargetPath); err == nil && a.cfg.OutputFile != "" {
-		fmt.Printf("  %s %s\n\n",
+		ui.Printf("  %s %s\n\n",
 			dim("Report saved:"),
 			color.New(color.FgHiCyan).Sprint(a.cfg.OutputFile),
 		)
@@ -450,9 +453,9 @@ func printSeverityBar(label string, count int, c *color.Color, char string) {
 		bar += char
 	}
 	if count > 0 {
-		fmt.Printf("  %s  %s  %s\n", label, c.Sprintf("%3d", count), c.Sprint(bar))
+		ui.Printf("  %s  %s  %s\n", label, c.Sprintf("%3d", count), c.Sprint(bar))
 	} else {
-		fmt.Printf("  %s  %s\n", label, color.New(color.FgHiBlack).Sprint("  0"))
+		ui.Printf("  %s  %s\n", label, color.New(color.FgHiBlack).Sprint("  0"))
 	}
 }
 
