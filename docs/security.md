@@ -122,7 +122,9 @@ OSV API responses are additionally capped at `32 MiB` via `io.LimitReader` so a 
 
 ## `.gitignore` Awareness (Leaks)
 
-When `.gitignore` at the repo root matches a file, any secret finding on that file is **downgraded to INFO severity** with a marker in the description. The finding is kept visible because a historical accidental commit remains a real risk (check with `--git-history`), but it no longer generates HIGH/CRITICAL noise for files the developer explicitly excluded from version control. See [Issue #17](https://github.com/filipi86/drogonsec/issues/17).
+When `.gitignore` at the repo root matches a file, any secret finding on that file is **downgraded to LOW severity** with a marker in the description. The finding is kept visible because a historical accidental commit remains a real risk (check with `--git-history`), but it no longer generates HIGH/CRITICAL noise for files the developer explicitly excluded from version control. See [Issue #17](https://github.com/filipi86/drogonsec/issues/17).
+
+The demotion stops at LOW rather than INFO precisely so the finding stays visible: `--severity` defaults to `LOW`, and leak findings are held to that floor like every other engine, so an INFO finding would be dropped from the default scan instead of surfaced quietly.
 
 ---
 

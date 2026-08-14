@@ -22,9 +22,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   because a multi-byte character counted once per byte. SARIF measures columns
   in characters, and so does every editor. This affected the SAST columns that
   already existed.
+- **`--severity` was ignored by the leak engine.** SAST and SCA both dropped
+  findings below the requested floor; leaks reported every finding regardless,
+  so `drogonsec scan . --severity HIGH` still returned LOW secrets. This also
+  made the test-aware demotion pointless for leaks — a secret lowered to LOW
+  because it sits in a fixture was reported anyway — and filled this project's
+  own GitHub Security tab with 30 alerts for the fake credentials that exist to
+  exercise the detectors. Leaks are now held to the same floor, in the working
+  tree and in `--git-history`.
 
 ### Changed
 
+- **Secrets on `.gitignore`d files are demoted to LOW rather than INFO.** The
+  demotion exists so a local `.env` stops inflating the CRITICAL count while
+  staying visible — a copy committed earlier in history is still a real
+  exposure ([#17](https://github.com/filipi86/drogonsec/issues/17)). INFO sits
+  below the default `--severity LOW` floor, so once leaks respect that floor an
+  INFO finding would have vanished from the default scan instead. LOW keeps the
+  finding where the issue intended it.
 - **The banner, progress bars, scan summary and warnings now go to stderr**,
   leaving stdout for what the caller asked for: the findings report, the shell
   completion script, the `version` and `rules list` output. `drogonsec scan .
