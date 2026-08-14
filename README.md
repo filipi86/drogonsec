@@ -11,7 +11,7 @@
 
 </div>
 
-<img width="1099" height="398" alt="image" src="https://github.com/user-attachments/assets/d6b8efb1-7fe4-4c25-9f20-1a430d4a769c" />
+<img alt="The DrogonSec banner: the ASCII logo, the engines it runs — SAST, SCA, leaks, git-history and IaC — and the version of the build" src="docs/assets/banner.gif" />
 
 
 > An open-source, comprehensive security scanner combining SAST, SCA, and secret detection aligned with OWASP Top 10:2025 — created for intelligent remediation.

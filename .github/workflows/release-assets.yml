@@ -1,0 +1,91 @@
+name: Release Assets
+
+# The banner in README.md and docs/index.md carries the version number, so a
+# hand-taken screenshot is wrong the moment a release ships and stays wrong
+# until somebody notices. This records it from the real binary instead, every
+# time a release is published.
+#
+# main is protected, so this cannot push to it: the refreshed image arrives as
+# a pull request.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-assets
+  cancel-in-progress: false
+
+jobs:
+  banner:
+    name: Refresh README banner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          # The Makefile derives VERSION from `git describe --tags`, which
+          # needs the tags and the history behind them. A shallow clone would
+          # record a banner reading "vdev".
+          fetch-depth: 0
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.6'
+          cache: true
+
+      # The tape puts ./bin on PATH and runs `drogonsec version`, so the binary
+      # has to exist first. Building from main rather than from the tag is
+      # deliberate and safe: the banner prints version.Short(), which cuts at
+      # the first hyphen, so a commit or two past the tag still renders v0.4.0.
+      - name: Build the binary the recording will run
+        run: make build
+
+      - name: Record the banner
+        uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf # v2.1.1
+        with:
+          path: docs/assets/banner.tape
+
+      - name: Open a pull request when the banner changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain -- docs/assets/banner.gif)" ]; then
+            echo "Banner is already current — nothing to open."
+            exit 0
+          fi
+
+          version="${RELEASE_TAG:-$(git describe --tags --always | sed 's/^v//')}"
+          branch="chore/banner-${GITHUB_RUN_ID}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$branch"
+          git add docs/assets/banner.gif
+          git commit -m "chore(assets): refresh the README banner for ${version}"
+          git push origin "$branch"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore(assets): refresh the README banner for ${version}" \
+            --body "$(cat <<EOF
+          Recorded from the binary built at \`${version}\` by \`docs/assets/banner.tape\`,
+          so the version in the frame matches the release rather than whenever
+          somebody last took a screenshot by hand.
+
+          Regenerate locally with \`make demo\` (needs \`brew install vhs\`).
+
+          Only \`docs/assets/banner.gif\` changes. Opened by
+          \`.github/workflows/release-assets.yml\`.
+          EOF
+          )"

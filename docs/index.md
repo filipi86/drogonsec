@@ -9,7 +9,7 @@
 
 > An open-source, comprehensive security scanner combining **SAST**, **SCA**, and **secret detection** — aligned with OWASP Top 10:2025 and built for intelligent remediation.
 
-<img width="1024" height="401" alt="Screenshot 2026-04-06 at 13 01 37" src="https://github.com/user-attachments/assets/4eaae128-9e49-4ed1-a714-165a10bbf13e" />
+<img alt="The DrogonSec banner: the ASCII logo, the engines it runs — SAST, SCA, leaks, git-history and IaC — and the version of the build" src="assets/banner.gif" />
 
 ---
 

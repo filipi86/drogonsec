@@ -18,7 +18,7 @@ DOCKER_IMAGE   := drogonsec-scanner
 DOCKER_PLATFORMS := linux/amd64,linux/arm64
 DOCKER_OUTPUT  := type=oci,dest=$(BUILD_DIR)/$(BINARY_NAME)-docker-$(VERSION).tar
 
-.PHONY: all build clean test lint install release help
+.PHONY: all build clean test lint install release help demo
 
 ##@ General
 help: ## Display this help
@@ -58,6 +58,16 @@ install: build ## Install drogonsec to /usr/local/bin
 
 run: build ## Build and run a scan on current directory
 	./$(BUILD_DIR)/$(BINARY_NAME) scan .
+
+demo: build ## Regenerate the README banner (docs/assets/banner.gif) with vhs
+	@command -v vhs >/dev/null 2>&1 || { \
+		echo "vhs not found. Install it with: brew install vhs"; \
+		echo "See https://github.com/charmbracelet/vhs"; \
+		exit 1; \
+	}
+	@echo "Recording docs/assets/banner.gif at $(VERSION)..."
+	@vhs docs/assets/banner.tape
+	@echo "✓ Recorded: docs/assets/banner.gif"
 
 ##@ Testing
 test: ## Run all tests
