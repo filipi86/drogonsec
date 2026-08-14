@@ -114,6 +114,53 @@ func TestDetector_RedactedMatch(t *testing.T) {
 	}
 }
 
+// TestDetector_Column checks that a finding points at the secret itself rather
+// than at the start of the line, which is what lets an editor underline the
+// credential and not the variable that holds it.
+func TestDetector_Column(t *testing.T) {
+	d := leaks.NewDetector()
+
+	testCases := []struct {
+		name string
+		line string
+		want int
+	}{
+		{
+			name: "secret in the middle of the line",
+			line: "aws_access_key_id = AKIAIOSFODNN7EXAMPLE",
+			want: 21,
+		},
+		{
+			name: "secret at the start of the line",
+			line: "AKIAIOSFODNN7EXAMPLE",
+			want: 1,
+		},
+		{
+			// Columns are counted in characters, not bytes: each of the three
+			// accented characters ahead of the key takes two bytes, so a byte
+			// offset would point three columns past the secret.
+			name: "multi-byte characters before the secret",
+			line: "# café résumé key: AKIAIOSFODNN7EXAMPLE",
+			want: 20,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, f := range d.ScanLine(tc.line) {
+				if f.Type != "AWS Access Key ID" {
+					continue
+				}
+				if f.Column != tc.want {
+					t.Errorf("Column = %d, want %d", f.Column, tc.want)
+				}
+				return
+			}
+			t.Fatal("expected an AWS Access Key ID finding, got none")
+		})
+	}
+}
+
 // helper
 func getTypes(findings []leaks.LeakFinding) []string {
 	types := make([]string, len(findings))

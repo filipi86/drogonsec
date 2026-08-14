@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/filipi86/drogonsec/internal/config"
 	"github.com/go-git/go-git/v5"
@@ -21,6 +22,7 @@ type LeakFinding struct {
 	Type         string
 	File         string
 	Line         int
+	Column       int
 	Match        string
 	RuleID       string
 	Severity     config.Severity
@@ -517,6 +519,20 @@ func mustCompile(pattern string) *regexp.Regexp {
 	return re
 }
 
+// columnOf converts a byte offset within a line into a 1-based column.
+// Columns are counted in characters, not bytes: SARIF measures them that way,
+// and so does every editor, so a line with accented text ahead of the secret
+// would otherwise anchor the finding past where the secret actually starts.
+func columnOf(line string, byteOffset int) int {
+	if byteOffset <= 0 {
+		return 1
+	}
+	if byteOffset > len(line) {
+		byteOffset = len(line)
+	}
+	return utf8.RuneCountInString(line[:byteOffset]) + 1
+}
+
 // shannonEntropy calculates the Shannon entropy of a string
 func shannonEntropy(s string) float64 {
 	if len(s) == 0 {
@@ -647,10 +663,13 @@ func (d *Detector) matchLine(line string) []LeakFinding {
 
 	var findings []LeakFinding
 	for _, rule := range d.rules {
-		if !rule.Pattern.MatchString(line) {
+		// FindStringIndex gives the match and where it starts in one pass;
+		// MatchString followed by FindString ran every pattern twice.
+		loc := rule.Pattern.FindStringIndex(line)
+		if loc == nil {
 			continue
 		}
-		match := rule.Pattern.FindString(line)
+		match := line[loc[0]:loc[1]]
 
 		entropy := 0.0
 		if strings.Contains(rule.Name, "Generic") || strings.Contains(rule.Name, "High Entropy") {
@@ -662,6 +681,7 @@ func (d *Detector) matchLine(line string) []LeakFinding {
 
 		findings = append(findings, LeakFinding{
 			Type:        rule.Name,
+			Column:      columnOf(line, loc[0]),
 			Match:       redactSecret(match),
 			RuleID:      rule.ID,
 			Severity:    rule.Severity,

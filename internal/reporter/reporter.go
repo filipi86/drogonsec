@@ -564,7 +564,7 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
-					Region:           sarifRegion{StartLine: sarifStartLine(f.Line)},
+					Region:           sarifRegion{StartLine: sarifStartLine(f.Line), StartColumn: sarifStartColumn(f.Column)},
 				},
 			}},
 		})

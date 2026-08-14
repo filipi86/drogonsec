@@ -95,6 +95,7 @@ func fullResult() *analyzer.ScanResult {
 			Severity:    config.SeverityCritical,
 			File:        "/repo/config/prod.yml",
 			Line:        3,
+			Column:      12,
 			Match:       "AKI*****************",
 		}},
 		SCAFindings: []analyzer.SCAFinding{{
@@ -236,6 +237,25 @@ func TestSARIFRegionsAreValid(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestSARIFLeaksCarryTheirColumn keeps secrets anchored where they actually
+// are. Without startColumn the region runs from the start of the line, so an
+// editor underlines the whole line and points a reviewer at the variable name
+// instead of the credential.
+func TestSARIFLeaksCarryTheirColumn(t *testing.T) {
+	doc := writeSARIF(t, fullResult())
+
+	for _, res := range doc.Runs[0].Results {
+		if res.RuleID != "LEAK-001" {
+			continue
+		}
+		if got := res.Locations[0].PhysicalLocation.Region.StartColumn; got != 12 {
+			t.Errorf("leak result has startColumn %d, want 12", got)
+		}
+		return
+	}
+	t.Error("no LEAK-001 result in the emitted document")
 }
 
 func TestSARIFLevelMapping(t *testing.T) {
