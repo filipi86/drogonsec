@@ -114,7 +114,7 @@ When `--output <file>` is used for `text`, `json`, `sarif`, `html`, or `cycloned
 
 ## Manifest Size Limits (SCA)
 
-The SCA engine parses `package-lock.json`, `package.json`, `composer.json`, `pubspec.yaml`, `Gemfile.lock`, `requirements.txt`, `go.mod`, and `pom.xml`. JSON/YAML parsers load the full file before validating structure, so DrogonSec enforces a `10 MiB` size cap per manifest before parsing. Custom YAML rule files (loaded via `--rules-dir`) are capped at `5 MiB`. This prevents a malicious or accidentally oversized manifest from OOM-killing the scanner in CI.
+The SCA engine parses `package-lock.json`, `yarn.lock`, `package.json`, `composer.json`, `pubspec.yaml`, `Gemfile.lock`, `requirements.txt`, `go.mod`, and `pom.xml`. JSON/YAML parsers load the full file before validating structure, so DrogonSec enforces a `10 MiB` size cap per manifest before parsing. Custom YAML rule files (loaded via `--rules-dir`) are capped at `5 MiB`. This prevents a malicious or accidentally oversized manifest from OOM-killing the scanner in CI.
 
 OSV API responses are additionally capped at `32 MiB` via `io.LimitReader` so a compromised or misbehaving OSV proxy cannot exhaust scanner memory by streaming gigabytes of data.
 

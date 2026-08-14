@@ -1,10 +1,13 @@
 package sca
 
 import (
+	"bytes"
 	"encoding/json"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // LockfileParser is a ManifestParser that reads a resolved dependency graph
@@ -98,21 +101,24 @@ func (p *PackageLockParser) Parse(path string) ([]Dependency, error) {
 		return nil, nil
 	}
 
-	return walkNPMGraph(nodes, roots, path), nil
+	resolve := func(from, name, _ string) (string, bool) {
+		return resolveNPM(nodes, from, name)
+	}
+	return walkGraph(nodes, roots, resolve, "npm", path), nil
 }
 
 // normaliseNPMLock reduces either lockfile layout to the common node map, and
-// returns the names the root project declares for itself.
-func normaliseNPMLock(lock *packageLock, path string) (map[string]node, []string) {
+// returns what the root project declares for itself.
+func normaliseNPMLock(lock *packageLock, path string) (map[string]node, map[string]string) {
 	if len(lock.Packages) > 0 {
 		return normaliseV3(lock)
 	}
 	return normaliseV1(lock, path)
 }
 
-func normaliseV3(lock *packageLock) (map[string]node, []string) {
+func normaliseV3(lock *packageLock) (map[string]node, map[string]string) {
 	nodes := make(map[string]node, len(lock.Packages))
-	var roots []string
+	roots := make(map[string]string)
 
 	for key, entry := range lock.Packages {
 		// The empty key is the project itself: it holds no version of interest,
@@ -120,9 +126,11 @@ func normaliseV3(lock *packageLock) (map[string]node, []string) {
 		// the sole way to tell a direct dependency from a transitive one that
 		// npm hoisted to the top of node_modules alongside it.
 		if key == "" {
-			roots = append(roots, mapKeys(entry.Dependencies)...)
-			roots = append(roots, mapKeys(entry.DevDependencies)...)
-			roots = append(roots, mapKeys(entry.OptionalDependencies)...)
+			for _, m := range []map[string]string{entry.Dependencies, entry.DevDependencies, entry.OptionalDependencies} {
+				for name, constraint := range m {
+					roots[name] = constraint
+				}
+			}
 			continue
 		}
 		// Workspace members are symlinks into the repository, not published
@@ -142,7 +150,6 @@ func normaliseV3(lock *packageLock) (map[string]node, []string) {
 		nodes[key] = node{name: npmNameFromKey(key), version: entry.Version, deps: deps}
 	}
 
-	sort.Strings(roots)
 	return nodes, roots
 }
 
@@ -151,7 +158,7 @@ func normaliseV3(lock *packageLock) (map[string]node, []string) {
 // record what the project declared, so the sibling package.json is consulted
 // for that; without it every package is reported, but none can be called
 // direct.
-func normaliseV1(lock *packageLock, path string) (map[string]node, []string) {
+func normaliseV1(lock *packageLock, path string) (map[string]node, map[string]string) {
 	nodes := make(map[string]node)
 
 	var flatten func(prefix string, entries map[string]lockEntryV1)
@@ -168,13 +175,18 @@ func normaliseV1(lock *packageLock, path string) (map[string]node, []string) {
 	}
 	flatten("", lock.Dependencies)
 
-	return nodes, npmRootsFromPackageJSON(filepath.Join(filepath.Dir(path), "package.json"))
+	return nodes, declaredInPackageJSON(filepath.Join(filepath.Dir(path), "package.json"))
 }
 
-// npmRootsFromPackageJSON reads the names the project declares. A missing or
-// unreadable package.json is not an error: the lockfile still describes every
-// installed package, and the only thing lost is the direct/transitive split.
-func npmRootsFromPackageJSON(path string) []string {
+// declaredInPackageJSON reads what the project declares, as name to version
+// range. A missing or unreadable package.json is not an error: the lockfile
+// still describes every installed package, and the only thing lost is the
+// direct/transitive split.
+//
+// Both the npm v1 lockfile and every yarn.lock need this, for the same reason —
+// neither records the root project's own declarations in a form that can be
+// told apart from everything else in the file.
+func declaredInPackageJSON(path string) map[string]string {
 	data, err := readManifestFile(path)
 	if err != nil {
 		return nil
@@ -187,23 +199,35 @@ func npmRootsFromPackageJSON(path string) []string {
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return nil
 	}
-	roots := append(mapKeys(pkg.Dependencies), mapKeys(pkg.DevDependencies)...)
-	roots = append(roots, mapKeys(pkg.OptionalDependencies)...)
-	sort.Strings(roots)
+
+	roots := make(map[string]string)
+	for _, m := range []map[string]string{pkg.Dependencies, pkg.DevDependencies, pkg.OptionalDependencies} {
+		for name, constraint := range m {
+			roots[name] = constraint
+		}
+	}
 	return roots
 }
 
-// walkNPMGraph breadth-first searches from the declared dependencies, so the
-// route recorded for a package is the shortest one that introduces it. That is
-// the route worth showing: it answers "why is this in my tree" with the fewest
-// hops, and it is the hop nearest the root that a developer can actually
+// resolver answers which installed package a dependency edge points at. The
+// two npm lockfile families disagree about this and about nothing else:
+// package-lock.json keys packages by where they sit on disk, so an edge is
+// resolved by walking node_modules outwards from the dependent, while yarn.lock
+// keys them by the requirement they satisfy, so the edge itself is the key. The
+// traversal is written once against this.
+type resolver func(from, name, constraint string) (string, bool)
+
+// walkGraph breadth-first searches from the declared dependencies, so the route
+// recorded for a package is the shortest one that introduces it. That is the
+// route worth showing: it answers "why is this in my tree" with the fewest
+// hops, and the hop nearest the root is the one a developer can actually
 // change.
 //
-// Packages the search never reaches are still reported, with no route. A lock
-// file can retain entries for a platform the current install skipped, and a
+// Packages the search never reaches are still reported, with no route. A
+// lockfile can retain entries for a platform the current install skipped, and a
 // vulnerability in one of those is not made harmless by the graph edge being
 // absent from this file.
-func walkNPMGraph(nodes map[string]node, roots []string, manifest string) []Dependency {
+func walkGraph(nodes map[string]node, roots map[string]string, resolve resolver, ecosystem, manifest string) []Dependency {
 	type queued struct {
 		key  string
 		path []string
@@ -213,18 +237,20 @@ func walkNPMGraph(nodes map[string]node, roots []string, manifest string) []Depe
 	deps := make([]Dependency, 0, len(nodes))
 	var queue []queued
 
-	for _, name := range roots {
-		if key, ok := resolveNPM(nodes, "", name); ok && !seen[key] {
-			seen[key] = true
-			deps = append(deps, Dependency{
-				Name:      nodes[key].name,
-				Version:   nodes[key].version,
-				Ecosystem: "npm",
-				File:      manifest,
-				Direct:    true,
-			})
-			queue = append(queue, queued{key: key, path: []string{nodes[key].name}})
+	for _, name := range sortedKeys(roots) {
+		key, ok := resolve("", name, roots[name])
+		if !ok || seen[key] {
+			continue
 		}
+		seen[key] = true
+		deps = append(deps, Dependency{
+			Name:      nodes[key].name,
+			Version:   nodes[key].version,
+			Ecosystem: ecosystem,
+			File:      manifest,
+			Direct:    true,
+		})
+		queue = append(queue, queued{key: key, path: []string{nodes[key].name}})
 	}
 
 	for len(queue) > 0 {
@@ -232,7 +258,7 @@ func walkNPMGraph(nodes map[string]node, roots []string, manifest string) []Depe
 		queue = queue[1:]
 
 		for _, name := range sortedKeys(nodes[current.key].deps) {
-			key, ok := resolveNPM(nodes, current.key, name)
+			key, ok := resolve(current.key, name, nodes[current.key].deps[name])
 			if !ok || seen[key] {
 				continue
 			}
@@ -246,7 +272,7 @@ func walkNPMGraph(nodes map[string]node, roots []string, manifest string) []Depe
 			deps = append(deps, Dependency{
 				Name:      nodes[key].name,
 				Version:   nodes[key].version,
-				Ecosystem: "npm",
+				Ecosystem: ecosystem,
 				File:      manifest,
 				Path:      route,
 			})
@@ -261,7 +287,7 @@ func walkNPMGraph(nodes map[string]node, roots []string, manifest string) []Depe
 		deps = append(deps, Dependency{
 			Name:      nodes[key].name,
 			Version:   nodes[key].version,
-			Ecosystem: "npm",
+			Ecosystem: ecosystem,
 			File:      manifest,
 		})
 	}
@@ -300,6 +326,245 @@ func resolveNPM(nodes map[string]node, from, name string) (string, bool) {
 	}
 }
 
+// ============= yarn =============
+
+// YarnLockParser parses yarn.lock in both of its formats: the bespoke text of
+// Yarn 1, and the YAML of Yarn 2 and later ("Berry").
+//
+// Yarn keys packages by the requirement they satisfy rather than by where they
+// land on disk. An entry header is one or more descriptors — "express@^4.17.1",
+// or "express@npm:^4.17.1" under Berry — and a dependency edge names exactly
+// such a descriptor. That makes resolution a lookup instead of the outward walk
+// package-lock.json needs, and it makes it exact: two packages requiring
+// different ranges of the same dependency point at different entries with no
+// ambiguity to resolve.
+//
+// What yarn.lock does not record is which packages the project itself asked
+// for. Every entry looks alike, whether it is a declared dependency or
+// something six levels down. The sibling package.json supplies that; without
+// one, every package is still reported and only the direct/transitive split is
+// lost.
+type YarnLockParser struct{}
+
+func (p *YarnLockParser) Name() string    { return "yarn (lockfile)" }
+func (p *YarnLockParser) Files() []string { return []string{"yarn.lock"} }
+func (p *YarnLockParser) Lockfile()       {}
+
+func (p *YarnLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var nodes map[string]node
+	var descriptors map[string]string
+
+	// Berry announces itself with a __metadata block. The two formats are not
+	// distinguished by attempting a YAML parse and seeing what happens: Yarn 1
+	// output is close enough to YAML to make failure an unreliable signal.
+	if bytes.Contains(data, []byte("__metadata:")) {
+		nodes, descriptors, err = parseYarnBerry(data)
+	} else {
+		nodes, descriptors = parseYarnClassic(string(data))
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	resolve := func(_, name, constraint string) (string, bool) {
+		return resolveYarn(descriptors, name, constraint)
+	}
+	roots := declaredInPackageJSON(filepath.Join(filepath.Dir(path), "package.json"))
+	return walkGraph(nodes, roots, resolve, "npm", path), nil
+}
+
+// parseYarnClassic reads the Yarn 1 format:
+//
+//	"@babel/core@^7.0.0", "@babel/core@^7.1.0":
+//	  version "7.20.0"
+//	  dependencies:
+//	    "@babel/types" "^7.20.0"
+//
+// An entry header sits at column zero and ends in a colon; everything indented
+// under it belongs to that entry, and the nested "dependencies" block is
+// indented once further.
+func parseYarnClassic(content string) (map[string]node, map[string]string) {
+	nodes := make(map[string]node)
+	descriptors := make(map[string]string)
+
+	var header []string
+	var version string
+	var deps map[string]string
+	inDeps := false
+
+	flush := func() {
+		if len(header) == 0 || version == "" {
+			return
+		}
+		name := yarnNameOf(header[0])
+		if name == "" {
+			return
+		}
+		key := name + "@" + version
+		nodes[key] = node{name: name, version: version, deps: deps}
+		for _, descriptor := range header {
+			descriptors[descriptor] = key
+		}
+	}
+
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		// A new entry begins at column zero.
+		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+			flush()
+			header = splitYarnHeader(trimmed)
+			version, deps, inDeps = "", nil, false
+			continue
+		}
+
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+
+		switch {
+		case trimmed == "dependencies:" || trimmed == "optionalDependencies:":
+			inDeps = true
+		case strings.HasPrefix(trimmed, "version"):
+			version = unquoteYarn(strings.TrimSpace(strings.TrimPrefix(trimmed, "version")))
+			inDeps = false
+		case inDeps && indent >= 4:
+			name, constraint, ok := splitYarnEdge(trimmed)
+			if !ok {
+				continue
+			}
+			if deps == nil {
+				deps = make(map[string]string)
+			}
+			deps[name] = constraint
+		default:
+			// resolved, integrity, checksum and the rest carry nothing this
+			// scanner acts on. Any of them ends a dependencies block, because
+			// they are indented at the entry's own level.
+			if indent <= 2 {
+				inDeps = false
+			}
+		}
+	}
+	flush()
+
+	return nodes, descriptors
+}
+
+// yarnBerryEntry is one entry of a Yarn 2+ lockfile.
+type yarnBerryEntry struct {
+	Version      string            `yaml:"version"`
+	Resolution   string            `yaml:"resolution"`
+	LinkType     string            `yaml:"linkType"`
+	Dependencies map[string]string `yaml:"dependencies"`
+}
+
+func parseYarnBerry(data []byte) (map[string]node, map[string]string, error) {
+	var raw map[string]yarnBerryEntry
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, nil, err
+	}
+
+	nodes := make(map[string]node, len(raw))
+	descriptors := make(map[string]string, len(raw))
+
+	for header, entry := range raw {
+		if header == "__metadata" || entry.Version == "" {
+			continue
+		}
+		// A workspace resolution is a directory of this repository, not a
+		// published package, and has no version an advisory can be matched
+		// against.
+		if strings.Contains(entry.Resolution, "@workspace:") {
+			continue
+		}
+
+		specs := splitYarnHeader(header)
+		if len(specs) == 0 {
+			continue
+		}
+		name := yarnNameOf(specs[0])
+		if name == "" {
+			continue
+		}
+
+		key := name + "@" + entry.Version
+		nodes[key] = node{name: name, version: entry.Version, deps: entry.Dependencies}
+		for _, descriptor := range specs {
+			descriptors[descriptor] = key
+		}
+	}
+
+	return nodes, descriptors, nil
+}
+
+// resolveYarn finds the entry satisfying one dependency edge. Berry writes the
+// protocol into both descriptors and edges ("npm:^4.17.1"), Yarn 1 writes
+// neither, and an edge can be recorded in either style depending on which tool
+// last wrote the file — so both spellings are tried before giving up.
+func resolveYarn(descriptors map[string]string, name, constraint string) (string, bool) {
+	candidates := []string{name + "@" + constraint}
+	if after, found := strings.CutPrefix(constraint, "npm:"); found {
+		candidates = append(candidates, name+"@"+after)
+	} else {
+		candidates = append(candidates, name+"@npm:"+constraint)
+	}
+
+	for _, candidate := range candidates {
+		if key, ok := descriptors[candidate]; ok {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+// splitYarnHeader breaks an entry header into its descriptors. One entry can
+// satisfy several requirements at once, and the header lists them all.
+func splitYarnHeader(header string) []string {
+	header = strings.TrimSuffix(strings.TrimSpace(header), ":")
+
+	var specs []string
+	for _, part := range strings.Split(header, ",") {
+		if spec := unquoteYarn(strings.TrimSpace(part)); spec != "" {
+			specs = append(specs, spec)
+		}
+	}
+	return specs
+}
+
+// yarnNameOf takes the package name out of a descriptor. The separator is the
+// last "@" rather than the first, because a scoped name opens with one:
+// "@babel/core@^7.0.0" is the package "@babel/core" at "^7.0.0".
+func yarnNameOf(descriptor string) string {
+	if at := strings.LastIndex(descriptor, "@"); at > 0 {
+		return descriptor[:at]
+	}
+	return descriptor
+}
+
+// splitYarnEdge reads one line of a Yarn 1 dependencies block, where the name
+// and the range are separated by a space and either may be quoted.
+func splitYarnEdge(line string) (string, string, bool) {
+	name, constraint, found := strings.Cut(line, " ")
+	if !found {
+		return "", "", false
+	}
+	return unquoteYarn(name), unquoteYarn(strings.TrimSpace(constraint)), true
+}
+
+func unquoteYarn(s string) string {
+	return strings.Trim(strings.TrimSpace(s), `"'`)
+}
+
 // npmNameFromKey recovers a package name from its installation path. Splitting
 // on the last "node_modules/" keeps scoped names intact: the "/" inside
 // "@scope/pkg" is not a path separator here.
@@ -308,14 +573,6 @@ func npmNameFromKey(key string) string {
 		return key[i+len("node_modules/"):]
 	}
 	return key
-}
-
-func mapKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 // sortedKeys keeps the traversal deterministic. Go randomises map iteration,
