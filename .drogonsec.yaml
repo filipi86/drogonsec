@@ -117,6 +117,9 @@ suppressions:
   - rule_id: "GO-005"
     file: "internal/engine/engine_test.go"
     reason: "Test fixture — InsecureSkipVerify:true embedded in a Go code string to verify GO-005 detection"
+  - rule_id: "GO-007"
+    file: "internal/engine/engine_test.go"
+    reason: "Test fixture — math/rand token generation embedded in a Go code string to verify GO-007 detection"
   # --- Detector self-matches: the leak engine's own rule definitions ---
   - rule_id: "GEN-001"
     file: "internal/leaks/detector.go"

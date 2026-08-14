@@ -283,9 +283,14 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 
 	detector := leaks.NewDetector()
 	// Load .gitignore from the target path so we can downgrade findings on
-	// intentionally ignored files (e.g. .env) from HIGH/CRITICAL to INFO,
+	// intentionally ignored files (e.g. .env) from HIGH/CRITICAL to LOW,
 	// keeping visibility without generating noise (Issue #17).
 	gitignore := leaks.NewGitignoreMatcher(a.cfg.TargetPath)
+
+	// Leaks are held to the same --severity floor as SAST and SCA. Without it
+	// the demotions below achieved nothing: a finding lowered to LOW because it
+	// sits in a test fixture was still reported by a scan asking for HIGH.
+	minWeight := config.Severity(a.cfg.MinSeverity).Weight()
 
 	for _, file := range files {
 		findings, err := detector.ScanFile(file)
@@ -296,20 +301,30 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 				// Severity demotion (never drops — only lowers, keeping the
 				// finding auditable at lower --severity tiers):
 				//  - a secret on a .gitignored file (e.g. a local .env) is not
-				//    committed material → INFO;
+				//    committed material → LOW;
 				//  - a secret in a test/fixture file is an intentional
 				//    throwaway value used to exercise the detector, not a real
 				//    leak → LOW. Mirrors the SAST secret-family demotion.
+				//
+				// Neither goes below LOW. INFO sits under the default floor of
+				// the shipped configuration, and Issue #17 settled that a secret
+				// on a .gitignored file stays visible — a copy committed earlier
+				// in history is still a real exposure.
 				switch {
 				case ignored:
-					af.Severity = config.SeverityInfo
+					if af.Severity.Weight() > config.SeverityLow.Weight() {
+						af.Severity = config.SeverityLow
+					}
 					af.Description = "[.gitignore] " + af.Description +
-						" — file is listed in .gitignore; severity downgraded to INFO. " +
+						" — file is listed in .gitignore; severity downgraded to LOW. " +
 						"If this file was ever committed historically, run `drogonsec scan . --git-history` to check."
 				case isTestPath(af.File) && af.Severity.Weight() > config.SeverityLow.Weight():
 					af.Severity = config.SeverityLow
 					af.Description = "[test file] " + af.Description +
 						" — test/fixture path; likely an intentional fixture, downgraded to LOW."
+				}
+				if af.Severity.Weight() < minWeight {
+					continue
 				}
 				a.mu.Lock()
 				result.AddLeakFinding(af)
@@ -325,8 +340,12 @@ func (a *Analyzer) runLeakDetection(files []string, result *ScanResult) error {
 		gitFindings, err := detector.ScanGitHistory(a.cfg.TargetPath)
 		if err == nil {
 			for _, gf := range gitFindings {
+				af := leakToFinding(gf)
+				if af.Severity.Weight() < minWeight {
+					continue
+				}
 				a.mu.Lock()
-				result.AddLeakFinding(leakToFinding(gf))
+				result.AddLeakFinding(af)
 				a.mu.Unlock()
 			}
 		}
