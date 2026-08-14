@@ -23,8 +23,8 @@ Set TypingSpeed 55ms
 # that: too narrow wraps every line and the box collapses into noise, while too
 # wide only leaves margin. Height covers the 29 banner lines plus the prompt
 # and the three version lines under it.
-Set Width 900
-Set Height 700
+Set Width 820
+Set Height 610
 
 # Put the freshly built binary on PATH without showing the plumbing, so the
 # recording opens on a clean prompt.
