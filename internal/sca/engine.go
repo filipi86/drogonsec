@@ -85,6 +85,7 @@ func New(targetPath string) *Engine {
 func (e *Engine) registerParsers() {
 	e.parsers = []ManifestParser{
 		&PackageLockParser{},
+		&YarnLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
 		&RequirementsTXTParser{},
@@ -203,10 +204,25 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 				}
 
 				if isLockfile {
+					// A project can carry two lockfiles for one ecosystem — a
+					// package-lock.json left behind beside a yarn.lock is the
+					// common case, usually after a migration. They describe one
+					// installation, so taking both reports every package twice.
+					// The parser registered first wins, which makes the choice
+					// deterministic rather than dependent on directory order.
+					skip := make(map[string]bool, 1)
 					for _, dep := range deps {
-						locked[lockKey(path, dep.Ecosystem)] = true
+						key := lockKey(path, dep.Ecosystem)
+						if _, decided := skip[key]; !decided {
+							skip[key] = locked[key]
+							locked[key] = true
+						}
 					}
-					lockfileDeps = append(lockfileDeps, deps...)
+					for _, dep := range deps {
+						if !skip[lockKey(path, dep.Ecosystem)] {
+							lockfileDeps = append(lockfileDeps, dep)
+						}
+					}
 					return nil
 				}
 

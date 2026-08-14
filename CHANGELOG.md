@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`yarn.lock` is parsed, in both of its formats** — the bespoke text of Yarn 1
+  and the YAML of Yarn 2 and later. A yarn project was previously read from its
+  `package.json` alone, so it had the same blind spot npm projects had: on a
+  project declaring only `express@4.17.1`, 1 package was visible instead of 52,
+  and 2 vulnerabilities instead of 12. Both formats now produce identical
+  results to the equivalent `package-lock.json`.
+- **A project carrying two lockfiles for one ecosystem is read once.** A
+  `package-lock.json` left beside a `yarn.lock` after a migration describes the
+  same installation twice; `package-lock.json` wins, deterministically rather
+  than by whichever the directory walk reached first.
+
 - **`package-lock.json` is parsed, so npm projects are scanned in full.** The
   SCA engine read `package.json` alone, which lists what a project declared, at
   version ranges. Everything those dependencies pull in — the overwhelming

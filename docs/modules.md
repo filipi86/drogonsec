@@ -80,7 +80,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 
 | Ecosystem | Files | Depth |
 |---|---|---|
-| **Node.js** | `package-lock.json`, `package.json` | Full tree when the lockfile is present |
+| **Node.js** | `package-lock.json`, `yarn.lock`, `package.json` | Full tree when a lockfile is present |
 | **Python** | `requirements.txt`, `requirements-dev.txt` | Declared only |
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
@@ -97,12 +97,19 @@ code that ships.
 
 Where both exist for the same project, the lockfile wins and the manifest is
 ignored — otherwise every declared dependency would be counted twice, the
-second time at a range that matches no advisory.
+second time at a range that matches no advisory. A project carrying both npm
+and yarn lockfiles, as happens when a migration leaves the old one behind, is
+read from `package-lock.json`.
+
+`yarn.lock` is understood in both of its formats: the bespoke text of Yarn 1 and
+the YAML of Yarn 2 and later. Neither records which packages the project itself
+declared, so the sibling `package.json` supplies that; without one every package
+is still reported and only the direct/transitive split is lost.
 
 Not yet parsed, so a project relying on one of these is **not** covered by the
-ecosystem's row above: `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
-`Pipfile.lock`, `composer.lock`, `Cargo.lock`, `go.sum`, Gradle builds, and the
-.NET ecosystem entirely.
+ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,
+`composer.lock`, `Cargo.lock`, `go.sum`, Gradle builds, and the .NET ecosystem
+entirely.
 
 ### What the SCA Engine Reports
 
