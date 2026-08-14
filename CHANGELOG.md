@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Leak findings now carry the column of the secret**, in the JSON output and
+  in the SARIF region. Only SAST findings had one, so a reader of a leak had no
+  way to tell where on the line the credential sat and could only mark the line
+  as a whole — GitHub Code Scanning highlighted from column 1, and an editor
+  would underline the variable name along with everything else.
+
+### Fixed
+
+- **Columns are counted in characters rather than bytes.** A line with accented
+  text ahead of the match reported a column past where the match really starts,
+  because a multi-byte character counted once per byte. SARIF measures columns
+  in characters, and so does every editor. This affected the SAST columns that
+  already existed.
+
 ### Changed
 
 - **The banner, progress bars, scan summary and warnings now go to stderr**,

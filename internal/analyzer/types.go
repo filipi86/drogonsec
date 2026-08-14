@@ -58,6 +58,7 @@ type LeakFinding struct {
 	Type          string          `json:"type"` // "AWS Key", "GitHub Token", etc.
 	File          string          `json:"file"`
 	Line          int             `json:"line"`
+	Column        int             `json:"column"`
 	Match         string          `json:"match"` // redacted value
 	RuleID        string          `json:"rule_id"`
 	Severity      config.Severity `json:"severity"`

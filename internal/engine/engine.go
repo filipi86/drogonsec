@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/filipi86/drogonsec/internal/config"
 )
@@ -199,13 +200,17 @@ func (e *Engine) RuleCount() int {
 	return len(e.rules)
 }
 
-// helper: find column of first match in line
+// helper: find column of first match in line.
+// The column is counted in characters rather than bytes, because that is how
+// SARIF and every editor read it; a line carrying accented text ahead of the
+// match would otherwise point past where the match really starts. Returns 0
+// when the rule does not match, which the reporters treat as "unknown".
 func findColumn(line string, re *regexp.Regexp) int {
 	loc := re.FindStringIndex(line)
 	if loc == nil {
 		return 0
 	}
-	return loc[0] + 1
+	return utf8.RuneCountInString(line[:loc[0]]) + 1
 }
 
 // helper: build a code snippet around a line

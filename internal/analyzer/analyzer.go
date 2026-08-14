@@ -465,6 +465,7 @@ func leakToFinding(lf leaks.LeakFinding) LeakFinding {
 		Type:         lf.Type,
 		File:         lf.File,
 		Line:         lf.Line,
+		Column:       lf.Column,
 		Match:        lf.Match,
 		RuleID:       lf.RuleID,
 		Severity:     lf.Severity,
