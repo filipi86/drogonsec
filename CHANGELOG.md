@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`node_modules/` is read when a project commits no lockfile.** Such a
+  repository was scanned from `package.json` alone — its declared dependencies,
+  at ranges — so everything they pull in was invisible, and the scan reported
+  almost nothing while succeeding. The installed tree on disk answers the same
+  question a lockfile does, exactly: on a project declaring only
+  `express@4.17.1` with its lockfile deleted, 12 vulnerabilities are found
+  instead of 2, and the SBOM lists 52 components instead of 1. Sources are tried
+  in order — `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` —
+  and none of them touches the network.
+
 - **`yarn.lock` is parsed, in both of its formats** — the bespoke text of Yarn 1
   and the YAML of Yarn 2 and later. A yarn project was previously read from its
   `package.json` alone, so it had the same blind spot npm projects had: on a
