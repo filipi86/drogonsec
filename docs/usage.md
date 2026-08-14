@@ -288,7 +288,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26.6'
 
       - name: Install Drogonsec
         run: |
@@ -388,31 +388,70 @@ With `fail_on.critical: true`, Drogonsec exits with a non-zero code when critica
 ```json
 {
   "version": "0.3.0",
+  "scan_time": "2026-08-14T09:41:02Z",
+  "duration": "1.204s",
   "target": "./myproject",
   "stats": {
-    "total_findings": 3,
+    "total_findings": 2,
     "critical": 1,
-    "high": 2,
+    "high": 1,
     "medium": 0,
-    "low": 0
+    "low": 0,
+    "info": 0,
+    "sast_count": 1,
+    "sca_count": 0,
+    "leaks_count": 1
   },
   "sast_findings": [
     {
-      "id": "PY-001",
+      "id": "PY-001-users.py-42",
+      "type": "SAST",
+      "language": "Python",
       "severity": "HIGH",
       "title": "SQL Injection via string formatting",
+      "description": "Direct string interpolation in SQL queries allows SQL Injection attacks. Attackers can manipulate queries to access or modify unauthorized data.",
       "file": "src/users.py",
       "line": 42,
-      "owasp": "A05:2025",
+      "column": 5,
+      "code": "def get_user(user_id):\n    cursor.execute(\"SELECT * FROM users WHERE id = %s\" % user_id)\n",
+      "rule_id": "PY-001",
+      "owasp": "A05:2025 - Injection",
       "cwe": "CWE-89",
       "cvss": 9.8,
-      "fix": "Use parameterized queries"
+      "references": [
+        "https://owasp.org/Top10/2025/A05_2025-Injection/",
+        "https://cwe.mitre.org/data/definitions/89.html"
+      ],
+      "remediation": "Use parameterized queries or prepared statements. Example: cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))",
+      "false_positive": false
     }
   ],
-  "leak_findings": [],
-  "sca_findings": []
+  "sca_findings": [],
+  "leak_findings": [
+    {
+      "type": "AWS Access Key ID",
+      "file": "src/config.py",
+      "line": 1,
+      "column": 12,
+      "match": "AKI*****************",
+      "rule_id": "LEAK-001",
+      "severity": "CRITICAL",
+      "description": "AWS Access Key ID detected. This grants programmatic access to AWS services."
+    }
+  ]
 }
 ```
+
+Notes for anyone parsing this output:
+
+- `id` is unique per finding (`<rule>-<file>-<line>`); the rule itself is `rule_id`.
+  Group and suppress on `rule_id`, not on `id`.
+- `column` is 1-based and counted in **characters**, not bytes.
+- `match` on a leak finding is always redacted — the raw secret is never written
+  to any report.
+- `ai_remediation` appears on a finding only when `--enable-ai` produced one, and
+  `dependencies` appears at the top level only when the SCA engine ran.
+- Findings arrive ordered by severity, CRITICAL first.
 
 ---
 

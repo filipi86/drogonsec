@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/filipi86/drogonsec/actions/workflows/ci.yml/badge.svg)](https://github.com/filipi86/drogonsec/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![OWASP Top 10 2025](https://img.shields.io/badge/OWASP-Top%2010%3A2025-orange.svg)](https://owasp.org/Top10/2025/)
-[![Go 1.25+](https://img.shields.io/badge/Go-1.25+-00ADD8.svg)](https://golang.org)
+[![Go 1.26.6+](https://img.shields.io/badge/Go-1.26.6+-00ADD8.svg)](https://golang.org)
 [![GitHub Release](https://img.shields.io/github/v/release/filipi86/drogonsec)](https://github.com/filipi86/drogonsec/releases)
 [![GitHub Issues](https://img.shields.io/github/issues/filipi86/drogonsec)](https://github.com/filipi86/drogonsec/issues)
 
