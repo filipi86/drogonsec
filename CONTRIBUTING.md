@@ -54,7 +54,7 @@ To report a **security vulnerability**, do not open a public issue — follow th
 
 | Tool | Version |
 |------|---------|
-| Go | 1.25+ |
+| Go | 1.26.6+ |
 | Git | any recent |
 | golangci-lint | latest (optional, for linting) |
 | Docker | optional |
