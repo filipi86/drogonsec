@@ -388,6 +388,11 @@ func (r *TextReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 			)
 			fmt.Fprintf(w, "  CVE      : %s  CVSS: %.1f\n", f.CVE, f.CVSS)
 			fmt.Fprintf(w, "  Manifest : %s\n", f.ManifestFile)
+			// Whether the project asked for this package decides what can be
+			// done about it. A direct dependency is a version bump; a
+			// transitive one usually is not, and the route names the package
+			// that has to move instead.
+			fmt.Fprintf(w, "  Required : %s\n", dependencyOrigin(f))
 			fmt.Fprintf(w, "  Fixed in : %s\n", green(f.FixedVersion))
 			fmt.Fprintf(w, "  Desc     : %s\n", f.Description)
 			fmt.Fprintf(w, "  Advisory : %s\n", f.Advisory)
@@ -395,6 +400,24 @@ func (r *TextReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 	}
 
 	return nil
+}
+
+// dependencyOrigin describes how a vulnerable package came to be installed.
+//
+// "directly" means the project declares it and the fix is its own version.
+// Otherwise the chain names what pulled it in, innermost last, because the
+// package to upgrade is somewhere along that chain rather than the one the
+// advisory is written about. An empty chain on a transitive package means the
+// route could not be established — the manifest was read without its lockfile,
+// or the lockfile keeps an entry nothing currently reaches.
+func dependencyOrigin(f analyzer.SCAFinding) string {
+	if f.Direct {
+		return "directly by this project"
+	}
+	if len(f.DependencyPath) == 0 {
+		return "indirectly (route unknown)"
+	}
+	return "via " + strings.Join(f.DependencyPath, " → ")
 }
 
 // ============= JSON REPORTER =============

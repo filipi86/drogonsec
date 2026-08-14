@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`package-lock.json` is parsed, so npm projects are scanned in full.** The
+  SCA engine read `package.json` alone, which lists what a project declared, at
+  version ranges. Everything those dependencies pull in — the overwhelming
+  majority of installed code, and where most advisories land — was invisible.
+  On a project whose only declared dependency is `express@4.17.1`, DrogonSec
+  saw 1 package and now sees 50, reporting 12 vulnerabilities where it
+  previously reported 2. All three lockfile formats are handled: the nested
+  tree of npm 6 and the flat `packages` map of npm 7 and later.
+- **Findings say how a package got there.** Every SCA finding now carries
+  `direct` and, when it is not direct, `dependency_path` — the chain that
+  introduces it, shown in the terminal report as `Required : via express`. A
+  vulnerability in a package a project never named is not fixed by upgrading
+  that package, and the chain names what has to move instead.
+- **Versions are the ones actually installed.** A range like `^4.17.1` is not a
+  version and cannot be matched against an advisory; reading the lockfile
+  replaces the guess with the resolved version, which removes false positives
+  and false negatives at the same time.
+
+### Fixed
+
+- **The same vulnerability could be reported twice.** OSV holds some flaws under
+  several identifiers that alias one another — `path-to-regexp` 0.1.7 comes back
+  as both `GHSA-37ch-88jc-xwx2` and `GHSA-9wv6-86v2-598j`, each listing the
+  other, both resolving to `CVE-2024-45296`. Findings are now collapsed by
+  package, version, manifest and CVE, falling back to the advisory identifier
+  for advisories that never received a CVE.
+- **The documented SCA support was aspirational.** `docs/modules.md` listed
+  `yarn.lock`, `Pipfile.lock`, `pyproject.toml`, `go.sum`, Gradle builds,
+  `composer.lock`, `Cargo.lock` and the whole .NET ecosystem as supported. None
+  of them were parsed. The table now states what the engine reads, how deep it
+  goes for each ecosystem, and what is not covered.
+
+### Added
+
 - **Leak findings now carry the column of the secret**, in the JSON output and
   in the SARIF region. Only SAST findings had one, so a reader of a leak had no
   way to tell where on the line the credential sat and could only mark the line

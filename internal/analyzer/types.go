@@ -41,6 +41,18 @@ type SCAFinding struct {
 	Description    string               `json:"description"`
 	Advisory       string               `json:"advisory_url"`
 	OWASP          config.OWASPCategory `json:"owasp"`
+
+	// Direct is false when nothing in the project declares this package: it
+	// arrived because another dependency required it. DependencyPath is the
+	// chain that introduces it, from a declared dependency inwards and
+	// excluding the package itself, so ["express", "cookie"] means express
+	// requires cookie which requires this package. Both are empty when the
+	// ecosystem's lockfile was absent and only declared dependencies could be
+	// read.
+	//
+	// Converted directly from sca.Finding — keep the fields in step.
+	Direct         bool     `json:"direct"`
+	DependencyPath []string `json:"dependency_path,omitempty"`
 }
 
 // Dependency represents a single component discovered by the SCA engine.

@@ -25,6 +25,17 @@ type Finding struct {
 	Description    string
 	Advisory       string
 	OWASP          config.OWASPCategory
+
+	// Direct and DependencyPath carry the shape of the dependency graph
+	// through to the report. They are what turns "you have 340 vulnerabilities"
+	// into something a team can act on: a vulnerability in a package the
+	// project never named is not fixed by upgrading that package, it is fixed —
+	// if at all — by moving whatever pulled it in.
+	//
+	// analyzer.SCAFinding is converted from this type directly, so the two
+	// declarations have to stay field-for-field identical.
+	Direct         bool
+	DependencyPath []string
 }
 
 // Dependency represents a parsed dependency
@@ -33,6 +44,20 @@ type Dependency struct {
 	Version   string
 	Ecosystem string
 	File      string
+
+	// Direct records whether the project declares this dependency itself.
+	// Everything else arrived because something else asked for it, which is
+	// where most vulnerabilities live and where the fix is rarely a version
+	// bump of the package named in the advisory.
+	Direct bool
+
+	// Path is the chain of packages that introduces a transitive dependency,
+	// from a direct dependency inwards and excluding the dependency itself:
+	// ["express", "cookie"] means express depends on cookie which depends on
+	// this one. Empty for a direct dependency, and empty when the route cannot
+	// be established. It answers the first question anyone asks about an
+	// advisory in a package they have never heard of.
+	Path []string
 }
 
 // ManifestParser defines the interface for manifest file parsers
@@ -59,6 +84,7 @@ func New(targetPath string) *Engine {
 // registerParsers adds all manifest parsers
 func (e *Engine) registerParsers() {
 	e.parsers = []ManifestParser{
+		&PackageLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
 		&RequirementsTXTParser{},
@@ -93,7 +119,41 @@ func (e *Engine) Analyze() ([]Finding, error) {
 		findings = e.checkKnownVulnerabilities(deps)
 	}
 
-	return findings, nil
+	return dedupeFindings(findings), nil
+}
+
+// dedupeFindings collapses records that describe the same vulnerability in the
+// same package.
+//
+// OSV frequently holds one flaw under several identifiers that alias each
+// other — path-to-regexp 0.1.7 comes back as both GHSA-37ch-88jc-xwx2 and
+// GHSA-9wv6-86v2-598j, each listing the other and both resolving to
+// CVE-2024-45296. Reporting that twice inflates the count and costs a reviewer
+// the time it takes to work out the two entries are one issue.
+//
+// A CVE identifies the flaw, so it is the key wherever there is one. Advisories
+// that never received a CVE fall back to their advisory URL, which keeps two
+// genuinely different GHSA-only records apart. The manifest is part of the key
+// so that the same package vulnerable in two projects of a monorepo is still
+// reported for each.
+func dedupeFindings(findings []Finding) []Finding {
+	seen := make(map[string]bool, len(findings))
+	kept := make([]Finding, 0, len(findings))
+
+	for _, f := range findings {
+		identity := f.CVE
+		if identity == "" {
+			identity = f.Advisory
+		}
+		key := strings.Join([]string{f.Ecosystem, f.PackageName, f.PackageVersion, f.ManifestFile, identity}, "\x00")
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		kept = append(kept, f)
+	}
+
+	return kept
 }
 
 // Dependencies returns the full set of dependencies discovered by the most
@@ -103,11 +163,23 @@ func (e *Engine) Dependencies() []Dependency {
 	return e.lastDeps
 }
 
-// collectDependencies finds and parses all manifest files
+// collectDependencies finds and parses all manifest files.
+//
+// Where a lockfile and a manifest describe the same project, only the lockfile
+// is kept: it names every installed package at the version actually installed,
+// while the manifest repeats the handful the project declared, at a range.
+// Merging the two would report the same direct dependency twice and match the
+// second copy against a range like "^4.17.1", which is neither a version that
+// exists nor one an advisory can be checked against.
 func (e *Engine) collectDependencies() ([]Dependency, error) {
-	var allDeps []Dependency
+	var lockfileDeps, manifestDeps []Dependency
+
+	// Directories where a lockfile has already spoken for an ecosystem.
+	locked := make(map[string]bool)
 
 	for _, parser := range e.parsers {
+		_, isLockfile := parser.(LockfileParser)
+
 		for _, manifestName := range parser.Files() {
 			err := filepath.WalkDir(e.targetPath, func(path string, d os.DirEntry, err error) error {
 				if err != nil || d.IsDir() {
@@ -121,12 +193,30 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 					}
 				}
 
-				if filepath.Base(path) == manifestName {
-					deps, parseErr := parser.Parse(path)
-					if parseErr == nil {
-						allDeps = append(allDeps, deps...)
-					}
+				if filepath.Base(path) != manifestName {
+					return nil
 				}
+
+				deps, parseErr := parser.Parse(path)
+				if parseErr != nil {
+					return nil
+				}
+
+				if isLockfile {
+					for _, dep := range deps {
+						locked[lockKey(path, dep.Ecosystem)] = true
+					}
+					lockfileDeps = append(lockfileDeps, deps...)
+					return nil
+				}
+
+				// A manifest states intent, so everything it lists is by
+				// definition declared by the project. Lockfile parsers work the
+				// direct/transitive split out for themselves.
+				for i := range deps {
+					deps[i].Direct = true
+				}
+				manifestDeps = append(manifestDeps, deps...)
 				return nil
 			})
 			if err != nil {
@@ -135,7 +225,19 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 		}
 	}
 
-	return allDeps, nil
+	for _, dep := range manifestDeps {
+		if locked[lockKey(dep.File, dep.Ecosystem)] {
+			continue
+		}
+		lockfileDeps = append(lockfileDeps, dep)
+	}
+
+	return lockfileDeps, nil
+}
+
+// lockKey identifies an ecosystem within one project directory.
+func lockKey(manifestPath, ecosystem string) string {
+	return filepath.Dir(manifestPath) + "\x00" + ecosystem
 }
 
 // countUniqueFiles returns the number of unique manifest files
@@ -227,6 +329,8 @@ func (e *Engine) checkKnownVulnerabilities(deps []Dependency) []Finding {
 						Description:    vuln.desc,
 						Advisory:       fmt.Sprintf("https://osv.dev/vulnerability/%s", vuln.cve),
 						OWASP:          config.OWASP_A03_SoftwareSupplyChainFailures,
+						Direct:         dep.Direct,
+						DependencyPath: dep.Path,
 					})
 				}
 			}
