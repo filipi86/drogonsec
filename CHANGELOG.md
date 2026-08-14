@@ -34,6 +34,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   this — stderr goes to the terminal, so an interactive run looks exactly as it
   did.
 
+### Security
+
+- **The build moves to Go 1.26.6**, in CI, in the Docker image and as the floor
+  in `go.mod`. Five advisories in the standard library — `net/http`,
+  `crypto/tls`, `net/url` and `encoding/asn1` — are reachable from the monitor's
+  HTTP client, the webhook server and the SCA client, and all five are fixed in
+  1.26.6. `govulncheck` reports zero affecting the code after the bump; it had
+  started failing the build on `main` as the advisories were published, without
+  any change to the source.
+
 ## [0.3.0] - 2026-08-13
 
 Correctness release for the SCA engine. Writing the first tests for it turned
