@@ -78,16 +78,31 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 
 ### Supported Manifest Files
 
-| Ecosystem | Files |
-|---|---|
-| **Node.js** | `package.json`, `package-lock.json`, `yarn.lock` |
-| **Python** | `requirements.txt`, `Pipfile`, `Pipfile.lock`, `pyproject.toml` |
-| **Go** | `go.mod`, `go.sum` |
-| **Java** | `pom.xml`, `build.gradle`, `build.gradle.kts` |
-| **Ruby** | `Gemfile`, `Gemfile.lock` |
-| **PHP** | `composer.json`, `composer.lock` |
-| **Rust** | `Cargo.toml`, `Cargo.lock` |
-| **.NET** | `*.csproj`, `packages.config` |
+| Ecosystem | Files | Depth |
+|---|---|---|
+| **Node.js** | `package-lock.json`, `package.json` | Full tree when the lockfile is present |
+| **Python** | `requirements.txt`, `requirements-dev.txt` | Declared only |
+| **Go** | `go.mod` | Declared, including `// indirect` entries |
+| **Java** | `pom.xml` | Declared only |
+| **Ruby** | `Gemfile.lock` | Full tree |
+| **PHP** | `composer.json` | Declared only |
+| **Dart** | `pubspec.yaml`, `pubspec.yml` | Declared only |
+
+**Depth is the column that matters.** A manifest states what a project asked
+for: a handful of names, at version *ranges*. A lockfile states what was
+actually installed: an exact version for every package in the tree, including
+the ones nobody named. Vulnerabilities overwhelmingly live in that second
+group, so an ecosystem marked "declared only" is reporting on a fraction of the
+code that ships.
+
+Where both exist for the same project, the lockfile wins and the manifest is
+ignored — otherwise every declared dependency would be counted twice, the
+second time at a range that matches no advisory.
+
+Not yet parsed, so a project relying on one of these is **not** covered by the
+ecosystem's row above: `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`,
+`Pipfile.lock`, `composer.lock`, `Cargo.lock`, `go.sum`, Gradle builds, and the
+.NET ecosystem entirely.
 
 ### What the SCA Engine Reports
 

@@ -371,6 +371,8 @@ func osvVulnToFinding(v osvVuln, dep Dependency) Finding {
 		Description:    desc,
 		Advisory:       fmt.Sprintf("https://osv.dev/vulnerability/%s", v.ID),
 		OWASP:          config.OWASP_A03_SoftwareSupplyChainFailures,
+		Direct:         dep.Direct,
+		DependencyPath: dep.Path,
 	}
 }
 

@@ -451,6 +451,11 @@ Notes for anyone parsing this output:
   to any report.
 - `ai_remediation` appears on a finding only when `--enable-ai` produced one, and
   `dependencies` appears at the top level only when the SCA engine ran.
+- On an SCA finding, `direct` says whether the project declares the package
+  itself, and `dependency_path` is the chain that introduced it otherwise
+  (`["express", "qs"]` means express requires qs which requires this package).
+  A transitive finding with an empty path is one whose route could not be
+  established — usually an ecosystem scanned without its lockfile.
 - Findings arrive ordered by severity, CRITICAL first.
 
 ---
