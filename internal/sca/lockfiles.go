@@ -1000,51 +1000,19 @@ func pythonResolver(nodes map[string]node) resolver {
 // A missing or unreadable pyproject.toml is not an error: the resolved graph is
 // still complete, and only the direct/transitive split is lost.
 func declaredInPyProject(path string) map[string]string {
-	data, err := readManifestFile(path)
+	// Deliberately the same reader the manifest tier uses. pyproject.toml has
+	// four places a dependency can be declared, and two readers of it drifted
+	// apart the moment one learned about [dependency-groups] and the other did
+	// not — which cost the packages in that group their direct flag, and
+	// everything below them its route.
+	deps, err := (&PyProjectParser{}).Parse(path)
 	if err != nil {
 		return nil
 	}
 
-	var manifest struct {
-		Project struct {
-			Dependencies         []string            `toml:"dependencies"`
-			OptionalDependencies map[string][]string `toml:"optional-dependencies"`
-		} `toml:"project"`
-		Tool struct {
-			Poetry struct {
-				Dependencies map[string]any `toml:"dependencies"`
-				Group        map[string]struct {
-					Dependencies map[string]any `toml:"dependencies"`
-				} `toml:"group"`
-			} `toml:"poetry"`
-		} `toml:"tool"`
-	}
-	if err := toml.Unmarshal(data, &manifest); err != nil {
-		return nil
-	}
-
-	roots := make(map[string]string)
-	add := func(name string) {
-		if name = normalizePythonName(name); name != "" && name != "python" {
-			roots[name] = ""
-		}
-	}
-
-	for _, requirement := range manifest.Project.Dependencies {
-		add(requirementName(requirement))
-	}
-	for _, group := range manifest.Project.OptionalDependencies {
-		for _, requirement := range group {
-			add(requirementName(requirement))
-		}
-	}
-	for name := range manifest.Tool.Poetry.Dependencies {
-		add(name)
-	}
-	for _, group := range manifest.Tool.Poetry.Group {
-		for name := range group.Dependencies {
-			add(name)
-		}
+	roots := make(map[string]string, len(deps))
+	for _, dep := range deps {
+		roots[normalizePythonName(dep.Name)] = ""
 	}
 	return roots
 }
@@ -1059,6 +1027,132 @@ func requirementName(requirement string) string {
 		name = name[:cut]
 	}
 	return strings.TrimSpace(name)
+}
+
+// declaredInRequirements reads the names out of a requirements.txt, for the
+// case where it is the only manifest a project has.
+func declaredInRequirements(path string) map[string]string {
+	deps, err := (&RequirementsTXTParser{}).Parse(path)
+	if err != nil {
+		return nil
+	}
+	roots := make(map[string]string, len(deps))
+	for _, dep := range deps {
+		roots[normalizePythonName(dep.Name)] = ""
+	}
+	return roots
+}
+
+// PyProjectParser parses pyproject.toml, Python's manifest.
+//
+// It is the last resort for a project with no lockfile — which in Python is a
+// common shape rather than an oversight, since pip writes none. Its entries are
+// requirements rather than resolutions, so most of them are ranges and are
+// reported as inventory without being matched; see pinnedVersion.
+type PyProjectParser struct{}
+
+func (p *PyProjectParser) Name() string    { return "python" }
+func (p *PyProjectParser) Files() []string { return []string{"pyproject.toml"} }
+
+func (p *PyProjectParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var manifest struct {
+		Project struct {
+			Dependencies         []string            `toml:"dependencies"`
+			OptionalDependencies map[string][]string `toml:"optional-dependencies"`
+		} `toml:"project"`
+		DependencyGroups map[string][]string `toml:"dependency-groups"`
+		Tool             struct {
+			Poetry struct {
+				Dependencies map[string]any `toml:"dependencies"`
+				Group        map[string]struct {
+					Dependencies map[string]any `toml:"dependencies"`
+				} `toml:"group"`
+			} `toml:"poetry"`
+		} `toml:"tool"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool)
+	var deps []Dependency
+	add := func(name, spec string) {
+		key := normalizePythonName(name)
+		// The interpreter is not a distribution, and Poetry lists it beside the
+		// real dependencies.
+		if key == "" || key == "python" || seen[key] {
+			return
+		}
+		seen[key] = true
+
+		version, pinned := pinnedVersion(spec, true)
+		deps = append(deps, Dependency{
+			Name:           name,
+			Version:        version,
+			VersionIsRange: !pinned,
+			Ecosystem:      "pypi",
+			File:           path,
+		})
+	}
+
+	// PEP 621, and the dependency-groups table that uv and pip use for
+	// development dependencies.
+	requirementLists := [][]string{manifest.Project.Dependencies}
+	for _, group := range manifest.Project.OptionalDependencies {
+		requirementLists = append(requirementLists, group)
+	}
+	for _, group := range manifest.DependencyGroups {
+		requirementLists = append(requirementLists, group)
+	}
+	for _, list := range requirementLists {
+		for _, requirement := range list {
+			name, spec := splitRequirement(requirement)
+			add(name, spec)
+		}
+	}
+
+	// Poetry's own tables, which a project can use instead of or alongside
+	// [project].
+	poetryTables := []map[string]any{manifest.Tool.Poetry.Dependencies}
+	for _, group := range manifest.Tool.Poetry.Group {
+		poetryTables = append(poetryTables, group.Dependencies)
+	}
+	for _, table := range poetryTables {
+		for _, name := range sortedKeys(table) {
+			switch v := table[name].(type) {
+			case string:
+				add(name, v)
+			case map[string]any:
+				spec, _ := v["version"].(string)
+				add(name, spec)
+			}
+		}
+	}
+
+	return deps, nil
+}
+
+// splitRequirement breaks a PEP 508 requirement into its distribution name and
+// its version specifier, dropping the extras list and the environment marker
+// that can sit on either side of them.
+func splitRequirement(requirement string) (name, spec string) {
+	requirement, _, _ = strings.Cut(requirement, ";")
+	name = requirementName(requirement)
+
+	spec = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(requirement), name))
+	// An extras list belongs to the name, not to the version: the specifier of
+	// "requests[socks] >= 2.27.0" starts after the closing bracket.
+	if strings.HasPrefix(spec, "[") {
+		if close := strings.Index(spec, "]"); close >= 0 {
+			spec = strings.TrimSpace(spec[close+1:])
+		}
+	}
+	return name, spec
 }
 
 // normalizePythonName reduces a distribution name to the form PEP 503 defines
