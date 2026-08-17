@@ -49,6 +49,7 @@ type sarifDoc struct {
 					} `json:"region"`
 				} `json:"physicalLocation"`
 			} `json:"locations"`
+			PartialFingerprints map[string]string `json:"partialFingerprints"`
 		} `json:"results"`
 	} `json:"runs"`
 }
@@ -309,5 +310,63 @@ func TestSarifRelPath(t *testing.T) {
 				t.Errorf("sarifRelPath(%q, %q) = %q, want %q", tt.target, tt.file, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestSARIFCarriesPartialFingerprints checks the field GitHub code scanning
+// uses to decide whether an alert is new, still open or fixed. Without it, it
+// falls back to matching on location, so inserting a line above a finding
+// closes the old alert and opens an identical one.
+func TestSARIFCarriesPartialFingerprints(t *testing.T) {
+	result := &analyzer.ScanResult{
+		TargetPath: "/repo",
+		SASTFindings: []analyzer.Finding{
+			{RuleID: "PY-001", File: "/repo/a.py", Line: 4, Title: "SQLi", Severity: config.SeverityHigh, Fingerprint: "aaaa000000000000"},
+		},
+		LeakFindings: []analyzer.LeakFinding{
+			{RuleID: "LEAK-001", File: "/repo/.env", Line: 2, Type: "AWS Key", Severity: config.SeverityCritical, Fingerprint: "bbbb000000000000"},
+		},
+		SCAFindings: []analyzer.SCAFinding{
+			{PackageName: "lodash", PackageVersion: "4.17.15", CVE: "CVE-2021-23337", ManifestFile: "/repo/package.json", Severity: config.SeverityHigh, Fingerprint: "cccc000000000000"},
+		},
+	}
+
+	doc := writeSARIF(t, result)
+
+	key := "drogonsec/" + analyzer.FingerprintVersion
+	want := map[string]string{
+		"PY-001":         "aaaa000000000000",
+		"LEAK-001":       "bbbb000000000000",
+		"CVE-2021-23337": "cccc000000000000",
+	}
+	if len(doc.Runs[0].Results) != len(want) {
+		t.Fatalf("got %d results, want %d", len(doc.Runs[0].Results), len(want))
+	}
+	for _, r := range doc.Runs[0].Results {
+		expected, known := want[r.RuleID]
+		if !known {
+			t.Errorf("unexpected result for rule %q", r.RuleID)
+			continue
+		}
+		if got := r.PartialFingerprints[key]; got != expected {
+			t.Errorf("%s partialFingerprints[%s] = %q, want %q", r.RuleID, key, got, expected)
+		}
+	}
+}
+
+// TestSARIFOmitsAnEmptyFingerprint keeps the document valid for a result that
+// has none: SARIF requires partialFingerprints, where present, to be a non-empty
+// object.
+func TestSARIFOmitsAnEmptyFingerprint(t *testing.T) {
+	result := &analyzer.ScanResult{
+		TargetPath: "/repo",
+		SASTFindings: []analyzer.Finding{
+			{RuleID: "PY-001", File: "/repo/a.py", Line: 4, Severity: config.SeverityHigh},
+		},
+	}
+
+	doc := writeSARIF(t, result)
+	if got := doc.Runs[0].Results[0].PartialFingerprints; len(got) != 0 {
+		t.Errorf("partialFingerprints = %v, want absent", got)
 	}
 }

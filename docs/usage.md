@@ -116,6 +116,29 @@ drogonsec scan . --format cyclonedx --output sbom.json
 > `--output`, so the scan's progress output stays on the terminal and the file
 > receives only the clean document.
 
+### Stable finding identity
+
+Every finding carries a `fingerprint`, in the JSON output and as
+`partialFingerprints` in SARIF:
+
+```json
+"partialFingerprints": { "drogonsec/v1": "ea78b80742eb5df3" }
+```
+
+It is built from **what the finding is, never from where it sits** — the rule,
+the repository-relative path, and the matched content, with whitespace
+normalised. So it survives an edit above the finding, a re-indent, and being
+scanned from a different checkout directory, and it changes when the finding
+itself does. This is what lets GitHub code scanning tell a still-open alert from
+a new one, and what an editor needs to show "new since the last scan".
+
+Where one rule matches identical text twice in a file the inputs cannot separate
+the two, so an occurrence number is appended: `ea78b80742eb5df3-2`.
+
+The `drogonsec/` key carries the scheme version. If the inputs ever change, the
+version changes with them, so a consumer can tell a re-identified finding from a
+genuinely new one instead of seeing every alert reopen at once.
+
 ### CycloneDX SBOM
 
 The `cyclonedx` format exports a [CycloneDX](https://cyclonedx.org) 1.5 JSON
