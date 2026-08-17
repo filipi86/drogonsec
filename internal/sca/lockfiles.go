@@ -905,6 +905,186 @@ func cargoDeclaredVersion(entry any) (string, bool) {
 	return "", false
 }
 
+// ============= poetry =============
+
+// PoetryLockParser parses Python's poetry.lock.
+//
+// Python installs one version of a distribution per environment — site-packages
+// has a single directory per project name — so a name is a unique key, as it is
+// for Composer. What Python adds is that the *same* name is written several
+// ways: jinja2 requires "MarkupSafe" while the package that satisfies it is
+// locked as "markupsafe". PEP 503 defines the normal form both reduce to, and
+// resolving edges without it silently loses the route for every package whose
+// requirement was spelled differently from its own metadata.
+//
+// A dependency edge's value is ignored entirely. Poetry writes it as a
+// constraint string, or a table carrying environment markers, or an array of
+// those for a package constrained differently per platform — but the lockfile
+// has already chosen the one version, so the only thing the edge has to say is
+// which package it points at.
+type PoetryLockParser struct{}
+
+func (p *PoetryLockParser) Name() string    { return "poetry (lockfile)" }
+func (p *PoetryLockParser) Files() []string { return []string{"poetry.lock"} }
+func (p *PoetryLockParser) Lockfile()       {}
+
+// poetryLock covers the parts of poetry.lock this parser reads. The
+// [package.extras] table beside [package.dependencies] is deliberately absent:
+// an extra is a dependency the project has to ask for by name, and `poetry
+// install` without --extras does not install it.
+type poetryLock struct {
+	Package []poetryPackage `toml:"package"`
+}
+
+type poetryPackage struct {
+	Name         string         `toml:"name"`
+	Version      string         `toml:"version"`
+	Dependencies map[string]any `toml:"dependencies"`
+}
+
+func (p *PoetryLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock poetryLock
+	if err := toml.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node, len(lock.Package))
+	for _, pkg := range lock.Package {
+		if pkg.Name == "" || pkg.Version == "" {
+			continue
+		}
+		deps := make(map[string]string, len(pkg.Dependencies))
+		for name := range pkg.Dependencies {
+			deps[normalizePythonName(name)] = ""
+		}
+		nodes[normalizePythonName(pkg.Name)] = node{name: pkg.Name, version: pkg.Version, deps: deps}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	roots := declaredInPyProject(filepath.Join(filepath.Dir(path), "pyproject.toml"))
+	return walkGraph(nodes, roots, pythonResolver(nodes), "pypi", path), nil
+}
+
+// pythonResolver answers a dependency edge by normalised name, which is all a
+// single-version-per-environment installation leaves to do.
+func pythonResolver(nodes map[string]node) resolver {
+	return func(_, name, _ string) (string, bool) {
+		key := normalizePythonName(name)
+		_, ok := nodes[key]
+		return key, ok
+	}
+}
+
+// declaredInPyProject reads what the project requires of itself.
+//
+// Two layouts have to be read, and a modern Poetry project can use either or
+// both: the PEP 621 [project] table, whose "dependencies" is a list of
+// requirement strings, and Poetry's own [tool.poetry.dependencies] plus the
+// per-group tables under [tool.poetry.group]. Development groups are included —
+// they are installed, they run in CI, and a flaw in one is real.
+//
+// A missing or unreadable pyproject.toml is not an error: the resolved graph is
+// still complete, and only the direct/transitive split is lost.
+func declaredInPyProject(path string) map[string]string {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil
+	}
+
+	var manifest struct {
+		Project struct {
+			Dependencies         []string            `toml:"dependencies"`
+			OptionalDependencies map[string][]string `toml:"optional-dependencies"`
+		} `toml:"project"`
+		Tool struct {
+			Poetry struct {
+				Dependencies map[string]any `toml:"dependencies"`
+				Group        map[string]struct {
+					Dependencies map[string]any `toml:"dependencies"`
+				} `toml:"group"`
+			} `toml:"poetry"`
+		} `toml:"tool"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil
+	}
+
+	roots := make(map[string]string)
+	add := func(name string) {
+		if name = normalizePythonName(name); name != "" && name != "python" {
+			roots[name] = ""
+		}
+	}
+
+	for _, requirement := range manifest.Project.Dependencies {
+		add(requirementName(requirement))
+	}
+	for _, group := range manifest.Project.OptionalDependencies {
+		for _, requirement := range group {
+			add(requirementName(requirement))
+		}
+	}
+	for name := range manifest.Tool.Poetry.Dependencies {
+		add(name)
+	}
+	for _, group := range manifest.Tool.Poetry.Group {
+		for name := range group.Dependencies {
+			add(name)
+		}
+	}
+	return roots
+}
+
+// requirementName takes the distribution name out of a PEP 508 requirement
+// string — "requests[socks] >= 2.27.0 ; python_version >= '3'" is a requirement
+// on "requests". Everything from the first character that cannot appear in a
+// name onwards is the extras list, the constraint, or the marker.
+func requirementName(requirement string) string {
+	name := strings.TrimSpace(requirement)
+	if cut := strings.IndexAny(name, "[<>=!~; ("); cut >= 0 {
+		name = name[:cut]
+	}
+	return strings.TrimSpace(name)
+}
+
+// normalizePythonName reduces a distribution name to the form PEP 503 defines
+// for comparison: lower case, with every run of "-", "_" and "." collapsed to a
+// single "-". "Flask_SQLAlchemy", "flask-sqlalchemy" and "Flask.SQLAlchemy" are
+// one project, and the index treats them as such.
+func normalizePythonName(name string) string {
+	var b strings.Builder
+	b.Grow(len(name))
+
+	previousSeparator := false
+	for _, r := range strings.TrimSpace(name) {
+		if r == '-' || r == '_' || r == '.' {
+			// A leading run is dropped rather than turned into a "-", so a
+			// malformed name cannot produce a key that matches nothing.
+			if b.Len() > 0 {
+				previousSeparator = true
+			}
+			continue
+		}
+		if previousSeparator {
+			b.WriteByte('-')
+			previousSeparator = false
+		}
+		if r >= 'A' && r <= 'Z' {
+			r += 'a' - 'A'
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // npmNameFromKey recovers a package name from its installation path. Splitting
 // on the last "node_modules/" keeps scoped names intact: the "/" inside
 // "@scope/pkg" is not a path separator here.

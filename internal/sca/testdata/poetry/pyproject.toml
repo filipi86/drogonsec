@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "drogonsec-fixture"
+version = "0.1.0"
+description = ""
+authors = []
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "2.27.0"
+django = "3.2.12"
+celery = "5.2.0"
+
+[tool.poetry.group.dev.dependencies]
+jinja2 = "3.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

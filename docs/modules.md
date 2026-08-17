@@ -81,7 +81,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 | Ecosystem | Files | Depth |
 |---|---|---|
 | **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
-| **Python** | `requirements.txt`, `requirements-dev.txt` | Declared only |
+| **Python** | `poetry.lock`, `requirements.txt`, `requirements-dev.txt` | Full tree with `poetry.lock`; declared only otherwise |
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
 | **Ruby** | `Gemfile.lock` | Full tree |
@@ -143,9 +143,22 @@ Two versions of one crate in the same tree are normal in Rust and are reported
 separately, each with its own route: `time 0.1.45` pulled in by `chrono` is a
 different finding from a declared `time 0.3.9`.
 
+Python installs one version of a distribution per environment, so `poetry.lock`
+gives the full tree by name alone. The catch is that a name is written several
+ways — jinja2 requires `MarkupSafe`, and the package satisfying it is locked as
+`markupsafe` — so edges are matched in the normal form PEP 503 defines: lower
+case, with every run of `-`, `_` and `.` collapsed to a single `-`. The direct
+set comes from the sibling `pyproject.toml`, read in both layouts a modern
+project can use: the standard `[project]` table and Poetry's own
+`[tool.poetry.dependencies]` with its per-group tables. Development groups
+count — they are installed by a plain `poetry install`.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
-ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,
-`go.sum`, Gradle builds, and the .NET ecosystem entirely.
+ecosystem's row above: `pnpm-lock.yaml`, `Pipfile.lock`, `uv.lock`, `go.sum`,
+Gradle builds, and the .NET ecosystem entirely. Python also has no
+installed-tree tier yet: a virtualenv's `*.dist-info/METADATA` files are not
+read, so a project with neither `poetry.lock` nor `requirements.txt` is scanned
+as if it had no dependencies.
 
 ### What the SCA Engine Reports
 
