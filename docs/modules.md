@@ -74,9 +74,19 @@ fix: "Use parameterized queries: cursor.execute('SELECT * FROM users WHERE id = 
 
 ## SCA Engine — Software Composition Analysis
 
-The SCA engine scans your project's dependency manifest files for known CVEs, outdated packages, and supply chain risks. It maps directly to **A03:2025 — Software Supply Chain Failures**, one of the two new categories in OWASP Top 10:2025.
+The SCA engine works out which third-party packages your project actually
+installs, and checks each one against known advisories. It maps directly to
+**A03:2025 — Software Supply Chain Failures**, one of the two new categories in
+OWASP Top 10:2025.
 
-### Supported Manifest Files
+"Actually installs" is the whole job. A manifest names a handful of packages at
+version *ranges*; a lockfile names every package that will be installed, at the
+version it will be installed at. The second group is nearly all the code that
+ships and holds nearly all the advisories, so the engine reads lockfiles and
+installed trees wherever they exist and falls back to the manifest only when
+they do not.
+
+### Where dependencies are read from
 
 | Ecosystem | Files | Depth |
 |---|---|---|

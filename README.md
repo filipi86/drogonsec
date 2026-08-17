@@ -29,7 +29,7 @@
 | Engine | Description |
 |--------|-------------|
 | **SAST** | Static Application Security Testing for 20+ languages |
-| **SCA**  | Software Composition Analysis — scan dependencies for CVEs |
+| **SCA**  | Software Composition Analysis — the full transitive tree, not just what you declared |
 | **Leaks** | Secret detection — 50+ patterns (AWS, GCP, GitHub, JWT, SSH keys...) |
 | **IaC**  | Infrastructure as Code misconfigurations (Terraform, Kubernetes) |
 | **AI**   | AI-powered remediation — Ollama (local/free) or cloud providers |
@@ -42,6 +42,53 @@
 
 ### Supported Languages
 `Python` `Java` `JavaScript` `TypeScript` `Go` `Kotlin` `C#` `PHP` `Ruby` `Swift` `Dart` `Elixir` `Erlang` `Shell` `C/C++` `HTML` `Terraform` `Kubernetes` `Nginx`
+
+### Dependency Coverage
+
+A manifest names a handful of packages, at version *ranges*. A lockfile names
+every package that will actually be installed, at the version it will be
+installed at — and that second group is nearly all the code you ship, and where
+nearly all the advisories are. So the column that matters is **depth**:
+
+| Ecosystem | Read from | Depth |
+|---|---|---|
+| **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
+| **Python** | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `.venv/`, `pyproject.toml`, `requirements.txt` | Full tree |
+| **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
+| **Rust** | `Cargo.lock`, `Cargo.toml` | Full tree |
+| **Ruby** | `Gemfile.lock` | Full tree |
+| **Go** | `go.mod` | Declared, including `// indirect` |
+| **Java** | `pom.xml` | Declared only |
+| **Dart** | `pubspec.yaml` | Declared only |
+
+For npm, Python and PHP the engine falls back through three sources — the
+lockfile, then the installed tree on disk (`node_modules/`, a virtualenv,
+`vendor/`), then the manifest. A repository that does not commit a lockfile is
+still scanned in full after an install.
+
+Every finding carries whether the package is **direct** and, where the source
+records it, the route that introduced it:
+
+```
+#8 [CRITICAL] guzzlehttp/psr7 1.9.1
+  CVE      : CVE-2026-49214  CVSS: 9.0
+  Required : via guzzlehttp/guzzle
+  Fixed in : 2.10.2
+```
+
+**A range is not a version.** A dependency read from a manifest is checked
+against advisories only when the requirement names a single release.
+`lodash: "4.17.15"` is checked; `lodash: "^4.17.15"` is not — it installs
+4.17.21, and reporting the advisories for 4.17.15 would name a version you never
+installed. Those packages still appear in the inventory and the SBOM, and the
+scan says how many it had to skip. Committing a lockfile is the fix, and it buys
+the transitive tree at the same time.
+
+**No network.** Resolving a range against a registry would answer a different
+question — what would install *today* — and would put a scan that runs
+air-gapped on the far side of the internet.
+
+Full detail in [docs/modules.md](docs/modules.md#sca-engine--software-composition-analysis).
 
 ---
 
