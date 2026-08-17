@@ -96,6 +96,33 @@ the ones nobody named. Vulnerabilities overwhelmingly live in that second
 group, so an ecosystem marked "declared only" is reporting on a fraction of the
 code that ships.
 
+### A range is not a version
+
+A dependency read from a manifest is matched against advisories **only when the
+requirement names a single release**. `lodash: "4.17.15"` is answerable;
+`lodash: "^4.17.15"` is not, and is reported as inventory without a finding.
+
+The reason is that the two are not close. `^4.17.15` installs 4.17.21, and
+matching the number left after the caret is stripped reports advisories that no
+longer apply to the code that ships — with a version number beside them the
+project may never have installed. The scan says how many packages this affects
+rather than passing over them in silence:
+
+```
+Found 41 dependencies across 3 manifest files
+12 declared at version ranges, not checked against advisories — commit a lockfile to cover them
+```
+
+Resolving a range would take a registry and a network call, which is the one
+thing the SCA engine does not do. Committing a lockfile is the fix, and it is
+also the better answer: it covers the transitive tree at the same time.
+
+What counts as a pin is the ecosystem's own rule. `1.2.3` names one release in
+npm, Composer, pip and pub — but **in Cargo it is shorthand for `^1.2.3`**, so
+there only `=1.2.3` pins. pip's pin is `==`, and a second specifier undoes it:
+`torch==2.0.*,!=2.0.1` is a span. Lockfile entries are resolved by definition
+and are always matched.
+
 Where both exist for the same project, the lockfile wins and the manifest is
 ignored — otherwise every declared dependency would be counted twice, the
 second time at a range that matches no advisory. A project carrying both npm
