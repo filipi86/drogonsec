@@ -265,6 +265,14 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 		if eco == "" {
 			continue // skip unknown ecosystems
 		}
+		// A range is not a version. Asking OSV about the number a range starts
+		// at answers a question nobody put: "^4.17.15" installs lodash 4.17.21,
+		// and three of the six advisories against 4.17.15 are fixed by then.
+		// The package stays in the inventory and in the SBOM; what it cannot do
+		// is carry a finding.
+		if dep.VersionIsRange {
+			continue
+		}
 		queries = append(queries, osvQuery{
 			Version: dep.Version,
 			Package: osvPackage{Name: dep.Name, Ecosystem: eco},

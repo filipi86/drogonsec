@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -188,6 +189,163 @@ func parseInstalledComposer(projectDir string) ([]Dependency, error) {
 	roots := declaredInComposerJSON(manifest)
 
 	return walkGraph(nodes, roots, composerResolver(nodes), "packagist", manifest), nil
+}
+
+// sitePackagesGlobs are where a project-local virtualenv puts its packages.
+// A virtualenv anywhere else — one kept outside the repository, or the
+// interpreter's own site-packages — is deliberately not searched: this tier
+// answers "what is installed for this project", and a shared environment
+// answers something else.
+var sitePackagesGlobs = []string{
+	".venv/lib/python*/site-packages",
+	"venv/lib/python*/site-packages",
+	// Windows lays it out without the interpreter version.
+	".venv/Lib/site-packages",
+	"venv/Lib/site-packages",
+}
+
+// parseInstalledPython reads the dependency tree from a project's virtualenv.
+//
+// Python's packaging metadata is per-installed-distribution rather than
+// per-project: every package in site-packages carries a .dist-info/METADATA
+// file naming itself, its version, and — in Requires-Dist — what it needs.
+// Together those are the whole graph, which is why this tier gives routes where
+// Pipfile.lock cannot.
+//
+// It is read only where no lockfile covers the project. Python is the ecosystem
+// where that gap is widest: a repository can carry nothing but a pyproject.toml
+// and a .venv, and pip itself writes no lockfile at all.
+func parseInstalledPython(projectDir string) ([]Dependency, error) {
+	var sitePackages string
+	for _, pattern := range sitePackagesGlobs {
+		matches, err := filepath.Glob(filepath.Join(projectDir, pattern))
+		if err == nil && len(matches) > 0 {
+			// A virtualenv built for several interpreter versions is unusual;
+			// where it happens, the first in sorted order is taken so a scan is
+			// reproducible rather than dependent on directory order.
+			sort.Strings(matches)
+			sitePackages = matches[0]
+			break
+		}
+	}
+	if sitePackages == "" {
+		return nil, nil
+	}
+
+	entries, err := os.ReadDir(sitePackages)
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node)
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasSuffix(entry.Name(), ".dist-info") {
+			continue
+		}
+		if len(nodes) >= maxInstalledPackages {
+			break
+		}
+
+		name, version, requires, ok := readDistInfo(filepath.Join(sitePackages, entry.Name(), "METADATA"))
+		if !ok {
+			continue
+		}
+
+		deps := make(map[string]string, len(requires))
+		for _, required := range requires {
+			deps[required] = ""
+		}
+		nodes[normalizePythonName(name)] = node{name: name, version: version, deps: deps}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	// Findings are attributed to the manifest in the repository rather than to
+	// the virtualenv, which is a build product. Which manifest that is depends
+	// on the project; without any, the packages are still reported and only the
+	// direct/transitive split is lost.
+	manifest := pythonManifest(projectDir)
+	return walkGraph(nodes, pythonRoots(manifest), pythonResolver(nodes), "pypi", manifest), nil
+}
+
+// readDistInfo reads the three fields this scanner needs out of an installed
+// distribution's METADATA, which is an RFC 822-style header block followed by
+// the project's README. Everything from the first blank line on is that
+// README and is not parsed.
+func readDistInfo(path string) (name, version string, requires []string, ok bool) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return "", "", nil, false
+	}
+
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimRight(line, "\r")
+		if strings.TrimSpace(line) == "" {
+			break // the header block ends, the README begins
+		}
+
+		field, value, found := strings.Cut(line, ":")
+		if !found {
+			continue // a folded continuation line; none of our fields fold
+		}
+		value = strings.TrimSpace(value)
+
+		switch field {
+		case "Name":
+			name = value
+		case "Version":
+			version = value
+		case "Requires-Dist":
+			if required := distRequirement(value); required != "" {
+				requires = append(requires, required)
+			}
+		}
+	}
+
+	return name, version, requires, name != "" && version != ""
+}
+
+// distRequirement reads one Requires-Dist value into the normalised name it
+// points at, and returns empty for the ones that are not edges of this install.
+//
+// A requirement gated behind an extra — "argon2-cffi (>=19.1.0) ; extra ==
+// 'argon2'" — is not installed unless the extra was asked for, and following it
+// would claim a dependency the project does not have. Other markers are left
+// alone: "chardet ; python_version < \"3\"" simply resolves to nothing on a
+// Python 3 environment, because chardet is not in site-packages to be found.
+func distRequirement(value string) string {
+	requirement, marker, _ := strings.Cut(value, ";")
+	if strings.Contains(marker, "extra ==") {
+		return ""
+	}
+	return normalizePythonName(requirementName(requirement))
+}
+
+// pythonManifest picks the file in the repository that a finding should point
+// at, preferring the one that declares dependencies most completely.
+func pythonManifest(projectDir string) string {
+	for _, name := range []string{"pyproject.toml", "Pipfile", "requirements.txt"} {
+		path := filepath.Join(projectDir, name)
+		if _, err := os.Stat(path); err == nil {
+			return path
+		}
+	}
+	return filepath.Join(projectDir, "pyproject.toml")
+}
+
+// pythonRoots reads the declared set out of whichever manifest was found.
+func pythonRoots(manifest string) map[string]string {
+	switch filepath.Base(manifest) {
+	case "pyproject.toml":
+		return declaredInPyProject(manifest)
+	case "Pipfile":
+		return declaredInPipfile(manifest)
+	case "requirements.txt":
+		return declaredInRequirements(manifest)
+	}
+	return nil
 }
 
 // projectDirs lists, in a stable order, the directories holding a manifest of

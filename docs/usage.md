@@ -149,11 +149,12 @@ Example output (truncated):
 }
 ```
 
-> **Scope:** the SBOM is a flat component inventory. The SCA engine resolves
-> manifests rather than full lockfiles, so the transitive dependency graph is
-> not yet expressed. Transitive resolution and SPDX output are planned for a
-> later release. The SBOM is derived from the SCA engine, so do not combine it
-> with `--no-sca`.
+> **Scope:** where a lockfile or an installed tree is available, the inventory
+> covers the full transitive set — for npm, Python, PHP, Rust and Ruby that is
+> every package that will be installed, not only the declared ones. The
+> CycloneDX `dependencies` graph recording which component pulled in which is
+> not emitted yet; that and SPDX output are planned for a later release. The
+> SBOM is derived from the SCA engine, so do not combine it with `--no-sca`.
 
 ---
 

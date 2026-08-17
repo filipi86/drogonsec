@@ -868,15 +868,16 @@ func (p *CargoTOMLParser) Parse(path string) ([]Dependency, error) {
 	var deps []Dependency
 	for _, table := range []map[string]any{manifest.Dependencies, manifest.DevDependencies, manifest.BuildDependencies} {
 		for _, name := range sortedKeys(table) {
-			version, ok := cargoDeclaredVersion(table[name])
+			version, pinned, ok := cargoDeclaredVersion(table[name])
 			if !ok {
 				continue
 			}
 			deps = append(deps, Dependency{
-				Name:      name,
-				Version:   version,
-				Ecosystem: "cargo",
-				File:      path,
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "cargo",
+				File:           path,
 			})
 		}
 	}
@@ -893,16 +894,483 @@ func (p *CargoTOMLParser) Parse(path string) ([]Dependency, error) {
 // dependency reported without a version matches every advisory for that crate
 // or none, depending on the database's mood, and neither answer is worth
 // giving.
-func cargoDeclaredVersion(entry any) (string, bool) {
+// Cargo is the ecosystem where a bare version is *not* a pin: `serde = "1.0"`
+// is shorthand for `^1.0`, and only `=1.0.130` names a single release. Passing
+// false here is the whole difference from every other manifest.
+func cargoDeclaredVersion(entry any) (version string, pinned, found bool) {
 	switch v := entry.(type) {
 	case string:
-		return stripVersionPrefix(v), true
+		version, pinned = pinnedVersion(v, false)
+		return version, pinned, true
 	case map[string]any:
-		if version, ok := v["version"].(string); ok {
-			return stripVersionPrefix(version), true
+		if spec, ok := v["version"].(string); ok {
+			version, pinned = pinnedVersion(spec, false)
+			return version, pinned, true
 		}
 	}
-	return "", false
+	return "", false, false
+}
+
+// ============= poetry =============
+
+// PoetryLockParser parses Python's poetry.lock.
+//
+// Python installs one version of a distribution per environment — site-packages
+// has a single directory per project name — so a name is a unique key, as it is
+// for Composer. What Python adds is that the *same* name is written several
+// ways: jinja2 requires "MarkupSafe" while the package that satisfies it is
+// locked as "markupsafe". PEP 503 defines the normal form both reduce to, and
+// resolving edges without it silently loses the route for every package whose
+// requirement was spelled differently from its own metadata.
+//
+// A dependency edge's value is ignored entirely. Poetry writes it as a
+// constraint string, or a table carrying environment markers, or an array of
+// those for a package constrained differently per platform — but the lockfile
+// has already chosen the one version, so the only thing the edge has to say is
+// which package it points at.
+type PoetryLockParser struct{}
+
+func (p *PoetryLockParser) Name() string    { return "poetry (lockfile)" }
+func (p *PoetryLockParser) Files() []string { return []string{"poetry.lock"} }
+func (p *PoetryLockParser) Lockfile()       {}
+
+// poetryLock covers the parts of poetry.lock this parser reads. The
+// [package.extras] table beside [package.dependencies] is deliberately absent:
+// an extra is a dependency the project has to ask for by name, and `poetry
+// install` without --extras does not install it.
+type poetryLock struct {
+	Package []poetryPackage `toml:"package"`
+}
+
+type poetryPackage struct {
+	Name         string         `toml:"name"`
+	Version      string         `toml:"version"`
+	Dependencies map[string]any `toml:"dependencies"`
+}
+
+func (p *PoetryLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock poetryLock
+	if err := toml.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node, len(lock.Package))
+	for _, pkg := range lock.Package {
+		if pkg.Name == "" || pkg.Version == "" {
+			continue
+		}
+		deps := make(map[string]string, len(pkg.Dependencies))
+		for name := range pkg.Dependencies {
+			deps[normalizePythonName(name)] = ""
+		}
+		nodes[normalizePythonName(pkg.Name)] = node{name: pkg.Name, version: pkg.Version, deps: deps}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	roots := declaredInPyProject(filepath.Join(filepath.Dir(path), "pyproject.toml"))
+	return walkGraph(nodes, roots, pythonResolver(nodes), "pypi", path), nil
+}
+
+// pythonResolver answers a dependency edge by normalised name, which is all a
+// single-version-per-environment installation leaves to do.
+func pythonResolver(nodes map[string]node) resolver {
+	return func(_, name, _ string) (string, bool) {
+		key := normalizePythonName(name)
+		_, ok := nodes[key]
+		return key, ok
+	}
+}
+
+// declaredInPyProject reads what the project requires of itself.
+//
+// Two layouts have to be read, and a modern Poetry project can use either or
+// both: the PEP 621 [project] table, whose "dependencies" is a list of
+// requirement strings, and Poetry's own [tool.poetry.dependencies] plus the
+// per-group tables under [tool.poetry.group]. Development groups are included —
+// they are installed, they run in CI, and a flaw in one is real.
+//
+// A missing or unreadable pyproject.toml is not an error: the resolved graph is
+// still complete, and only the direct/transitive split is lost.
+func declaredInPyProject(path string) map[string]string {
+	// Deliberately the same reader the manifest tier uses. pyproject.toml has
+	// four places a dependency can be declared, and two readers of it drifted
+	// apart the moment one learned about [dependency-groups] and the other did
+	// not — which cost the packages in that group their direct flag, and
+	// everything below them its route.
+	deps, err := (&PyProjectParser{}).Parse(path)
+	if err != nil {
+		return nil
+	}
+
+	roots := make(map[string]string, len(deps))
+	for _, dep := range deps {
+		roots[normalizePythonName(dep.Name)] = ""
+	}
+	return roots
+}
+
+// requirementName takes the distribution name out of a PEP 508 requirement
+// string — "requests[socks] >= 2.27.0 ; python_version >= '3'" is a requirement
+// on "requests". Everything from the first character that cannot appear in a
+// name onwards is the extras list, the constraint, or the marker.
+func requirementName(requirement string) string {
+	name := strings.TrimSpace(requirement)
+	if cut := strings.IndexAny(name, "[<>=!~; ("); cut >= 0 {
+		name = name[:cut]
+	}
+	return strings.TrimSpace(name)
+}
+
+// declaredInRequirements reads the names out of a requirements.txt, for the
+// case where it is the only manifest a project has.
+func declaredInRequirements(path string) map[string]string {
+	deps, err := (&RequirementsTXTParser{}).Parse(path)
+	if err != nil {
+		return nil
+	}
+	roots := make(map[string]string, len(deps))
+	for _, dep := range deps {
+		roots[normalizePythonName(dep.Name)] = ""
+	}
+	return roots
+}
+
+// PyProjectParser parses pyproject.toml, Python's manifest.
+//
+// It is the last resort for a project with no lockfile — which in Python is a
+// common shape rather than an oversight, since pip writes none. Its entries are
+// requirements rather than resolutions, so most of them are ranges and are
+// reported as inventory without being matched; see pinnedVersion.
+type PyProjectParser struct{}
+
+func (p *PyProjectParser) Name() string    { return "python" }
+func (p *PyProjectParser) Files() []string { return []string{"pyproject.toml"} }
+
+func (p *PyProjectParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var manifest struct {
+		Project struct {
+			Dependencies         []string            `toml:"dependencies"`
+			OptionalDependencies map[string][]string `toml:"optional-dependencies"`
+		} `toml:"project"`
+		DependencyGroups map[string][]string `toml:"dependency-groups"`
+		Tool             struct {
+			Poetry struct {
+				Dependencies map[string]any `toml:"dependencies"`
+				Group        map[string]struct {
+					Dependencies map[string]any `toml:"dependencies"`
+				} `toml:"group"`
+			} `toml:"poetry"`
+		} `toml:"tool"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]bool)
+	var deps []Dependency
+	add := func(name, spec string) {
+		key := normalizePythonName(name)
+		// The interpreter is not a distribution, and Poetry lists it beside the
+		// real dependencies.
+		if key == "" || key == "python" || seen[key] {
+			return
+		}
+		seen[key] = true
+
+		version, pinned := pinnedVersion(spec, true)
+		deps = append(deps, Dependency{
+			Name:           name,
+			Version:        version,
+			VersionIsRange: !pinned,
+			Ecosystem:      "pypi",
+			File:           path,
+		})
+	}
+
+	// PEP 621, and the dependency-groups table that uv and pip use for
+	// development dependencies.
+	requirementLists := [][]string{manifest.Project.Dependencies}
+	for _, group := range manifest.Project.OptionalDependencies {
+		requirementLists = append(requirementLists, group)
+	}
+	for _, group := range manifest.DependencyGroups {
+		requirementLists = append(requirementLists, group)
+	}
+	for _, list := range requirementLists {
+		for _, requirement := range list {
+			name, spec := splitRequirement(requirement)
+			add(name, spec)
+		}
+	}
+
+	// Poetry's own tables, which a project can use instead of or alongside
+	// [project].
+	poetryTables := []map[string]any{manifest.Tool.Poetry.Dependencies}
+	for _, group := range manifest.Tool.Poetry.Group {
+		poetryTables = append(poetryTables, group.Dependencies)
+	}
+	for _, table := range poetryTables {
+		for _, name := range sortedKeys(table) {
+			switch v := table[name].(type) {
+			case string:
+				add(name, v)
+			case map[string]any:
+				spec, _ := v["version"].(string)
+				add(name, spec)
+			}
+		}
+	}
+
+	return deps, nil
+}
+
+// splitRequirement breaks a PEP 508 requirement into its distribution name and
+// its version specifier, dropping the extras list and the environment marker
+// that can sit on either side of them.
+func splitRequirement(requirement string) (name, spec string) {
+	requirement, _, _ = strings.Cut(requirement, ";")
+	name = requirementName(requirement)
+
+	spec = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(requirement), name))
+	// An extras list belongs to the name, not to the version: the specifier of
+	// "requests[socks] >= 2.27.0" starts after the closing bracket.
+	if strings.HasPrefix(spec, "[") {
+		if close := strings.Index(spec, "]"); close >= 0 {
+			spec = strings.TrimSpace(spec[close+1:])
+		}
+	}
+	return name, spec
+}
+
+// normalizePythonName reduces a distribution name to the form PEP 503 defines
+// for comparison: lower case, with every run of "-", "_" and "." collapsed to a
+// single "-". "Flask_SQLAlchemy", "flask-sqlalchemy" and "Flask.SQLAlchemy" are
+// one project, and the index treats them as such.
+func normalizePythonName(name string) string {
+	var b strings.Builder
+	b.Grow(len(name))
+
+	previousSeparator := false
+	for _, r := range strings.TrimSpace(name) {
+		if r == '-' || r == '_' || r == '.' {
+			// A leading run is dropped rather than turned into a "-", so a
+			// malformed name cannot produce a key that matches nothing.
+			if b.Len() > 0 {
+				previousSeparator = true
+			}
+			continue
+		}
+		if previousSeparator {
+			b.WriteByte('-')
+			previousSeparator = false
+		}
+		if r >= 'A' && r <= 'Z' {
+			r += 'a' - 'A'
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+// ============= pipenv =============
+
+// PipfileLockParser parses Pipenv's Pipfile.lock.
+//
+// It is the one lockfile here that records no graph at all: "default" and
+// "develop" are flat maps of name to resolved version, with nothing saying
+// which package asked for which. So this tier buys the transitive *set* at
+// exact versions — the part that decides whether an advisory matches — and not
+// the routes. A finding in a package the project never named will say so, and
+// stop there.
+//
+// The direct set still comes from the sibling Pipfile, which is where the
+// project's own [packages] and [dev-packages] are declared.
+type PipfileLockParser struct{}
+
+func (p *PipfileLockParser) Name() string    { return "pipenv (lockfile)" }
+func (p *PipfileLockParser) Files() []string { return []string{"Pipfile.lock"} }
+func (p *PipfileLockParser) Lockfile()       {}
+
+// pipfileEntry is one locked package. A package installed from version control
+// or a local path carries "git" or "path" instead of a version, and there is
+// nothing for an advisory to match against.
+type pipfileEntry struct {
+	Version string `json:"version"`
+}
+
+func (p *PipfileLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock struct {
+		Default map[string]pipfileEntry `json:"default"`
+		Develop map[string]pipfileEntry `json:"develop"`
+	}
+	if err := json.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+	if len(lock.Default)+len(lock.Develop) == 0 {
+		return nil, nil
+	}
+
+	// Development packages are installed into the same environment as the
+	// rest, so both maps contribute. A name in both is one installation.
+	roots := declaredInPipfile(filepath.Join(filepath.Dir(path), "Pipfile"))
+	seen := make(map[string]bool, len(lock.Default)+len(lock.Develop))
+	deps := make([]Dependency, 0, len(lock.Default)+len(lock.Develop))
+
+	for _, group := range []map[string]pipfileEntry{lock.Default, lock.Develop} {
+		for _, name := range sortedKeys(group) {
+			key := normalizePythonName(name)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+
+			// Pipenv writes the resolved version as "==3.12.1". Anything else
+			// — "*", or nothing at all for a VCS entry — is not a version, and
+			// pinnedVersion reports it as such so it is left unmatched.
+			version, pinned := pinnedVersion(group[name].Version, true)
+			_, direct := roots[key]
+			deps = append(deps, Dependency{
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "pypi",
+				File:           path,
+				Direct:         direct,
+			})
+		}
+	}
+	return deps, nil
+}
+
+// declaredInPipfile reads [packages] and [dev-packages] from a Pipfile. Its
+// absence costs only the direct/transitive split.
+func declaredInPipfile(path string) map[string]string {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil
+	}
+	var manifest struct {
+		Packages    map[string]any `toml:"packages"`
+		DevPackages map[string]any `toml:"dev-packages"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil
+	}
+
+	roots := make(map[string]string)
+	for _, group := range []map[string]any{manifest.Packages, manifest.DevPackages} {
+		for name := range group {
+			roots[normalizePythonName(name)] = ""
+		}
+	}
+	return roots
+}
+
+// ============= uv =============
+
+// UVLockParser parses uv.lock.
+//
+// uv records the graph the way Cargo does, and marks the root the same way: the
+// project itself is a package whose source is "virtual" or "editable" rather
+// than a registry, and its dependency list — together with the per-group
+// dev-dependencies beside it — is the direct set. No sibling manifest needed.
+type UVLockParser struct{}
+
+func (p *UVLockParser) Name() string    { return "uv (lockfile)" }
+func (p *UVLockParser) Files() []string { return []string{"uv.lock"} }
+func (p *UVLockParser) Lockfile()       {}
+
+type uvLock struct {
+	Package []uvPackage `toml:"package"`
+}
+
+type uvPackage struct {
+	Name    string `toml:"name"`
+	Version string `toml:"version"`
+	// Source distinguishes a package fetched from an index from the project
+	// itself. Its single key is the kind: "registry", "virtual", "editable",
+	// "directory", "git".
+	Source map[string]any `toml:"source"`
+	// Dependencies entries are inline tables carrying at least a name, and a
+	// version too where the lock holds the same name more than once.
+	Dependencies    []uvRef            `toml:"dependencies"`
+	DevDependencies map[string][]uvRef `toml:"dev-dependencies"`
+}
+
+type uvRef struct {
+	Name string `toml:"name"`
+}
+
+func (p *UVLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock uvLock
+	if err := toml.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node, len(lock.Package))
+	roots := make(map[string]string)
+
+	for _, pkg := range lock.Package {
+		if pkg.Name == "" || pkg.Version == "" {
+			continue
+		}
+
+		edges := make(map[string]string, len(pkg.Dependencies))
+		for _, ref := range pkg.Dependencies {
+			edges[normalizePythonName(ref.Name)] = ""
+		}
+		for _, group := range pkg.DevDependencies {
+			for _, ref := range group {
+				edges[normalizePythonName(ref.Name)] = ""
+			}
+		}
+
+		// A package that was not fetched from an index is the project, or one
+		// of its workspace members: its own code, and what it requires is what
+		// the project requires.
+		if !uvFromRegistry(pkg.Source) {
+			for name := range edges {
+				roots[name] = ""
+			}
+			continue
+		}
+		nodes[normalizePythonName(pkg.Name)] = node{name: pkg.Name, version: pkg.Version, deps: edges}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+	return walkGraph(nodes, roots, pythonResolver(nodes), "pypi", path), nil
+}
+
+// uvFromRegistry reports whether a package was fetched from a package index,
+// which is what separates a dependency from the project depending on it.
+func uvFromRegistry(source map[string]any) bool {
+	_, registry := source["registry"]
+	return registry
 }
 
 // npmNameFromKey recovers a package name from its installation path. Splitting

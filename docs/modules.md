@@ -74,14 +74,24 @@ fix: "Use parameterized queries: cursor.execute('SELECT * FROM users WHERE id = 
 
 ## SCA Engine — Software Composition Analysis
 
-The SCA engine scans your project's dependency manifest files for known CVEs, outdated packages, and supply chain risks. It maps directly to **A03:2025 — Software Supply Chain Failures**, one of the two new categories in OWASP Top 10:2025.
+The SCA engine works out which third-party packages your project actually
+installs, and checks each one against known advisories. It maps directly to
+**A03:2025 — Software Supply Chain Failures**, one of the two new categories in
+OWASP Top 10:2025.
 
-### Supported Manifest Files
+"Actually installs" is the whole job. A manifest names a handful of packages at
+version *ranges*; a lockfile names every package that will be installed, at the
+version it will be installed at. The second group is nearly all the code that
+ships and holds nearly all the advisories, so the engine reads lockfiles and
+installed trees wherever they exist and falls back to the manifest only when
+they do not.
+
+### Where dependencies are read from
 
 | Ecosystem | Files | Depth |
 |---|---|---|
 | **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
-| **Python** | `requirements.txt`, `requirements-dev.txt` | Declared only |
+| **Python** | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `.venv/`, `pyproject.toml`, `requirements.txt`, `requirements-dev.txt` | Full tree |
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
 | **Ruby** | `Gemfile.lock` | Full tree |
@@ -96,6 +106,33 @@ the ones nobody named. Vulnerabilities overwhelmingly live in that second
 group, so an ecosystem marked "declared only" is reporting on a fraction of the
 code that ships.
 
+### A range is not a version
+
+A dependency read from a manifest is matched against advisories **only when the
+requirement names a single release**. `lodash: "4.17.15"` is answerable;
+`lodash: "^4.17.15"` is not, and is reported as inventory without a finding.
+
+The reason is that the two are not close. `^4.17.15` installs 4.17.21, and
+matching the number left after the caret is stripped reports advisories that no
+longer apply to the code that ships — with a version number beside them the
+project may never have installed. The scan says how many packages this affects
+rather than passing over them in silence:
+
+```
+Found 41 dependencies across 3 manifest files
+12 declared at version ranges, not checked against advisories — commit a lockfile to cover them
+```
+
+Resolving a range would take a registry and a network call, which is the one
+thing the SCA engine does not do. Committing a lockfile is the fix, and it is
+also the better answer: it covers the transitive tree at the same time.
+
+What counts as a pin is the ecosystem's own rule. `1.2.3` names one release in
+npm, Composer, pip and pub — but **in Cargo it is shorthand for `^1.2.3`**, so
+there only `=1.2.3` pins. pip's pin is `==`, and a second specifier undoes it:
+`torch==2.0.*,!=2.0.1` is a span. Lockfile entries are resolved by definition
+and are always matched.
+
 Where both exist for the same project, the lockfile wins and the manifest is
 ignored — otherwise every declared dependency would be counted twice, the
 second time at a range that matches no advisory. A project carrying both npm
@@ -107,10 +144,11 @@ the YAML of Yarn 2 and later. Neither records which packages the project itself
 declared, so the sibling `package.json` supplies that; without one every package
 is still reported and only the direct/transitive split is lost.
 
-For npm and PHP the engine falls back through three sources, in this order:
+For npm, PHP and Python the engine falls back through three sources, in this order:
 
 1. **A lockfile** — `package-lock.json`, then `yarn.lock`; `composer.lock` for
-   PHP. What *will* be installed, reproducibly.
+   PHP; `poetry.lock`, `uv.lock` or `Pipfile.lock` for Python. What *will* be
+   installed, reproducibly.
 2. **The installed tree on disk** — what *is* installed. Read only when no
    lockfile covers the project, which makes a repository that does not commit
    one scannable in full: a CI job that runs `npm ci` or `composer install`
@@ -118,10 +156,11 @@ For npm and PHP the engine falls back through three sources, in this order:
    `node_modules/`, where each package carries its own manifest and the
    directory layout is the resolution; for PHP it means
    `vendor/composer/installed.json`, in which Composer records the whole
-   resolved graph in one file, in either the Composer 1 or the Composer 2 shape.
-3. **The manifest** — `package.json` or `composer.json`, the declared
-   dependencies at ranges. The last resort, and the only one that leaves the
-   transitive tree unseen.
+   resolved graph in one file, in either the Composer 1 or the Composer 2 shape;
+   for Python it means the project's virtualenv.
+3. **The manifest** — `package.json`, `composer.json`, `pyproject.toml` or
+   `requirements.txt`, the declared dependencies at ranges. The last resort,
+   and the only one that leaves the transitive tree unseen.
 
 None of the three touches the network. Resolving ranges against a registry would
 answer a different question — what would be installed today — and would put a
@@ -143,9 +182,39 @@ Two versions of one crate in the same tree are normal in Rust and are reported
 separately, each with its own route: `time 0.1.45` pulled in by `chrono` is a
 different finding from a declared `time 0.3.9`.
 
+Python installs one version of a distribution per environment, so `poetry.lock`
+gives the full tree by name alone. The catch is that a name is written several
+ways — jinja2 requires `MarkupSafe`, and the package satisfying it is locked as
+`markupsafe` — so edges are matched in the normal form PEP 503 defines: lower
+case, with every run of `-`, `_` and `.` collapsed to a single `-`. The direct
+set comes from the sibling `pyproject.toml`, read in both layouts a modern
+project can use: the standard `[project]` table and Poetry's own
+`[tool.poetry.dependencies]` with its per-group tables. Development groups
+count — they are installed by a plain `poetry install`.
+
+Python's three lockfiles are read, and they do not all say the same amount.
+`poetry.lock` and `uv.lock` record the dependency edges, so a finding comes with
+the route that introduced it. **`Pipfile.lock` records none** — it is a flat map
+of name to resolved version — so that tier buys the transitive set at exact
+versions, which is what decides whether an advisory matches, and reports
+transitive findings with no route rather than inventing one. Where the direct
+set comes from also differs: `uv.lock` names the project itself, the way
+`Cargo.lock` does, while `poetry.lock` needs `pyproject.toml` and
+`Pipfile.lock` needs the `Pipfile`.
+
+Python's installed tier is the virtualenv: `.venv/` or `venv/`, where every
+installed distribution carries a `*.dist-info/METADATA` naming itself, its
+version and its `Requires-Dist`. Together those are the whole graph, so this
+tier gives routes where `Pipfile.lock` cannot. A requirement gated behind an
+extra — `argon2-cffi ; extra == 'argon2'` — is not an edge, because it is not
+installed unless the extra was asked for. What the virtualenv brought in itself,
+`pip` and `setuptools`, is reported with no route: installed code that can carry
+advisories, reachable from nothing the project declared. Only a project-local
+virtualenv is read; a shared or system environment answers a different question.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
-ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,
-`go.sum`, Gradle builds, and the .NET ecosystem entirely.
+ecosystem's row above: `pnpm-lock.yaml`, `go.sum`, Gradle builds, and the .NET
+ecosystem entirely.
 
 ### What the SCA Engine Reports
 

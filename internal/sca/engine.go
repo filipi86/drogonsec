@@ -51,6 +51,13 @@ type Dependency struct {
 	// bump of the package named in the advisory.
 	Direct bool
 
+	// VersionIsRange records that Version was read from a requirement admitting
+	// more than one release — "^4.17.15" rather than "4.17.15". Such a
+	// dependency is still inventory, and still goes into an SBOM, but it is not
+	// matched against advisories: the number is where the range starts, not
+	// what ships.
+	VersionIsRange bool
+
 	// Path is the chain of packages that introduces a transitive dependency,
 	// from a direct dependency inwards and excluding the dependency itself:
 	// ["express", "cookie"] means express depends on cookie which depends on
@@ -88,8 +95,12 @@ func (e *Engine) registerParsers() {
 		&YarnLockParser{},
 		&ComposerLockParser{},
 		&CargoLockParser{},
+		&PoetryLockParser{},
+		&PipfileLockParser{},
+		&UVLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
+		&PyProjectParser{},
 		&RequirementsTXTParser{},
 		&GemfileParser{},
 		&GoModParser{},
@@ -114,6 +125,13 @@ func (e *Engine) Analyze() ([]Finding, error) {
 	}
 
 	ui.Printf("  Found %d dependencies across %d manifest files\n", len(deps), e.countUniqueFiles(deps))
+
+	// Saying nothing here would be the worst outcome of the change: a scan that
+	// reports no vulnerabilities because it could not look, reading exactly
+	// like a scan that looked and found none.
+	if ranged := countRanged(deps); ranged > 0 {
+		ui.Printf("  %d declared at version ranges, not checked against advisories — commit a lockfile to cover them\n", ranged)
+	}
 
 	// Query OSV API for real vulnerability data, fall back to demo DB on error
 	osv := newOSVClient()
@@ -158,6 +176,18 @@ func dedupeFindings(findings []Finding) []Finding {
 	}
 
 	return kept
+}
+
+// countRanged returns how many dependencies carry a range rather than a
+// resolved version, and so were left out of the advisory query.
+func countRanged(deps []Dependency) int {
+	n := 0
+	for _, dep := range deps {
+		if dep.VersionIsRange {
+			n++
+		}
+	}
+	return n
 }
 
 // Dependencies returns the full set of dependencies discovered by the most
@@ -251,7 +281,7 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	// stale, and is absent altogether until somebody runs an install.
 	for _, source := range installedSources {
 		for _, dir := range projectDirs(manifestDeps, source.ecosystem) {
-			key := lockKey(filepath.Join(dir, source.manifest), source.ecosystem)
+			key := lockKeyForDir(dir, source.ecosystem)
 			if locked[key] {
 				continue
 			}
@@ -274,23 +304,30 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	return lockfileDeps, nil
 }
 
-// installedSource is a reader for one ecosystem's installed tree: the
-// directory it is rooted at is a project directory, and the findings are
-// attributed to the named manifest rather than to the build product itself.
+// installedSource is a reader for one ecosystem's installed tree, rooted at a
+// project directory. Each reader decides for itself which manifest to attribute
+// its findings to, because the answer is not always one file: Python's could be
+// pyproject.toml, a Pipfile or a requirements.txt.
 type installedSource struct {
 	ecosystem string
-	manifest  string
 	parse     func(projectDir string) ([]Dependency, error)
 }
 
 var installedSources = []installedSource{
-	{ecosystem: "npm", manifest: "package.json", parse: parseInstalledNodeModules},
-	{ecosystem: "packagist", manifest: "composer.json", parse: parseInstalledComposer},
+	{ecosystem: "npm", parse: parseInstalledNodeModules},
+	{ecosystem: "packagist", parse: parseInstalledComposer},
+	{ecosystem: "pypi", parse: parseInstalledPython},
 }
 
 // lockKey identifies an ecosystem within one project directory.
 func lockKey(manifestPath, ecosystem string) string {
-	return filepath.Dir(manifestPath) + "\x00" + ecosystem
+	return lockKeyForDir(filepath.Dir(manifestPath), ecosystem)
+}
+
+// lockKeyForDir is the same identity taken from a directory directly, for
+// callers that have no particular manifest in hand.
+func lockKeyForDir(dir, ecosystem string) string {
+	return dir + "\x00" + ecosystem
 }
 
 // countUniqueFiles returns the number of unique manifest files
@@ -367,6 +404,12 @@ func (e *Engine) checkKnownVulnerabilities(deps []Dependency) []Finding {
 	}
 
 	for _, dep := range deps {
+		// Same rule as the OSV path: a range names where a span of releases
+		// begins, and comparing it to a vulnerable version is a coincidence,
+		// not a match.
+		if dep.VersionIsRange {
+			continue
+		}
 		if vulns, exists := knownVulnerable[strings.ToLower(dep.Name)]; exists {
 			for _, vuln := range vulns {
 				if vuln.version == dep.Version {
@@ -406,6 +449,69 @@ func stripVersionPrefix(v string) string {
 		}
 	}
 	return v
+}
+
+// pinnedVersion reads a manifest requirement into the version to report, and
+// whether the requirement actually names one.
+//
+// This is the difference between a manifest and a lockfile, expressed as a
+// boolean. "^4.17.15" is satisfied by lodash 4.17.21 as readily as by 4.17.15,
+// and those two differ by three advisories — so querying the number left after
+// the caret is stripped reports flaws that are fixed in the code that ships.
+// It is not a near miss either: the caret range is how almost every npm
+// dependency is written, and the version printed beside the CVE is one the
+// project may never have installed.
+//
+// Only a requirement admitting exactly one release can be answered without
+// resolving it, which needs a registry and a network. Everything else is
+// reported as inventory and left out of the advisory query.
+//
+// The bare form differs by ecosystem, which is why the caller states the rule:
+// "1.2.3" pins the version for npm, Composer, pip and pub, while Cargo reads
+// the same string as shorthand for "^1.2.3".
+func pinnedVersion(spec string, bareIsPin bool) (version string, pinned bool) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return "", false
+	}
+
+	// A requirement listing alternatives or bounds is a range whatever its
+	// parts look like: "^1.0 || ^2.0", ">=1.2,<2", "1.2 - 1.5".
+	if strings.ContainsAny(spec, "|,") || strings.Contains(spec, " - ") {
+		return stripVersionPrefix(spec), false
+	}
+
+	// "==" is pip's pin and "=" is Cargo's and Composer's. Both admit one
+	// release; every other operator admits a span of them.
+	for _, pin := range []string{"==", "="} {
+		if after, found := strings.CutPrefix(spec, pin); found {
+			after = strings.TrimSpace(after)
+			return after, looksResolved(after)
+		}
+	}
+
+	if stripped := stripVersionPrefix(spec); stripped != spec {
+		return stripped, false
+	}
+	return spec, bareIsPin && looksResolved(spec)
+}
+
+// looksResolved reports whether a string is shaped like one published version.
+// It rejects the things a requirement can hold that are not versions at all: a
+// wildcard ("*", "1.2.x"), a dist-tag ("latest"), and a URL or path
+// ("git+https://…", "file:../lib", "workspace:*"). Reported as a version, any
+// of them matches either nothing or the wrong thing.
+func looksResolved(v string) bool {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	if v == "" || v[0] < '0' || v[0] > '9' {
+		return false
+	}
+	for _, segment := range strings.Split(v, ".") {
+		if segment == "*" || segment == "x" || segment == "X" {
+			return false
+		}
+	}
+	return !strings.Contains(v, "*")
 }
 
 // maxManifestSize caps the size of any manifest file we will parse.
@@ -453,12 +559,14 @@ func (p *PackageJSONParser) Parse(path string) ([]Dependency, error) {
 
 	var deps []Dependency
 	addDeps := func(m map[string]string) {
-		for name, version := range m {
+		for name, spec := range m {
+			version, pinned := pinnedVersion(spec, true)
 			deps = append(deps, Dependency{
-				Name:      name,
-				Version:   stripVersionPrefix(version),
-				Ecosystem: "npm",
-				File:      path,
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "npm",
+				File:           path,
 			})
 		}
 	}
@@ -504,19 +612,32 @@ func (p *RequirementsTXTParser) Parse(path string) ([]Dependency, error) {
 
 		// Handle: package==1.0.0, package>=1.0.0, package~=1.0.0
 		for _, sep := range []string{"==", ">=", "<=", "~=", "!=", ">"} {
-			if idx := strings.Index(line, sep); idx != -1 {
-				name := strings.TrimSpace(line[:idx])
-				version := strings.TrimSpace(line[idx+len(sep):])
-				// Remove any extra specifiers
-				if commaIdx := strings.Index(version, ","); commaIdx != -1 {
-					version = version[:commaIdx]
-				}
-				deps = append(deps, Dependency{
-					Name: name, Version: version,
-					Ecosystem: "pypi", File: path,
-				})
-				break
+			idx := strings.Index(line, sep)
+			if idx == -1 {
+				continue
 			}
+			name := strings.TrimSpace(line[:idx])
+			version := strings.TrimSpace(line[idx+len(sep):])
+
+			// A second specifier makes the requirement a span even when the
+			// first operator is "==": "torch==2.0.*,!=2.0.1" is not a pin.
+			bounded := false
+			if commaIdx := strings.Index(version, ","); commaIdx != -1 {
+				version = strings.TrimSpace(version[:commaIdx])
+				bounded = true
+			}
+
+			// "==" is pip's only pin. Everything else names a span of
+			// releases, and the endpoint is not what gets installed:
+			// "django>=3.2.12" is satisfied by 5.x, where the advisories
+			// against 3.2.12 no longer apply.
+			pinned := sep == "==" && !bounded && looksResolved(version)
+
+			deps = append(deps, Dependency{
+				Name: name, Version: version, VersionIsRange: !pinned,
+				Ecosystem: "pypi", File: path,
+			})
+			break
 		}
 	}
 	return deps, nil
@@ -689,7 +810,7 @@ func (p *ComposerParser) Parse(path string) ([]Dependency, error) {
 
 	var deps []Dependency
 	addDeps := func(m map[string]string) {
-		for name, version := range m {
+		for name, spec := range m {
 			// Platform requirements — php itself, ext-json, lib-openssl,
 			// composer-runtime-api — describe the interpreter rather than code
 			// fetched from a registry. Reported as packages they inflate the
@@ -697,11 +818,13 @@ func (p *ComposerParser) Parse(path string) ([]Dependency, error) {
 			if !isPackagistName(name) {
 				continue
 			}
+			version, pinned := pinnedVersion(spec, true)
 			deps = append(deps, Dependency{
-				Name:      name,
-				Version:   stripVersionPrefix(version),
-				Ecosystem: "packagist",
-				File:      path,
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "packagist",
+				File:           path,
 			})
 		}
 	}
@@ -735,15 +858,18 @@ func (p *PubspecParser) Parse(path string) ([]Dependency, error) {
 			if name == "flutter" || name == "sdk" {
 				continue
 			}
-			version := ""
+			// A dependency given as a table rather than a string is a git, path
+			// or hosted source with no version to match against at all.
+			version, pinned := "", false
 			if v, ok := ver.(string); ok {
-				version = stripVersionPrefix(v)
+				version, pinned = pinnedVersion(v, true)
 			}
 			deps = append(deps, Dependency{
-				Name:      name,
-				Version:   version,
-				Ecosystem: "pub",
-				File:      path,
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "pub",
+				File:           path,
 			})
 		}
 	}
