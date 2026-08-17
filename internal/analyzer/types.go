@@ -26,6 +26,9 @@ type Finding struct {
 	Remediation   string               `json:"remediation"`              // static remediation
 	AIRemediation string               `json:"ai_remediation,omitempty"` // AI remediation suggestion
 	FalsePositive bool                 `json:"false_positive"`
+
+	// Fingerprint identifies this finding across scans. See Fingerprints.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // SCAFinding represents a vulnerable dependency found
@@ -53,6 +56,9 @@ type SCAFinding struct {
 	// Converted directly from sca.Finding — keep the fields in step.
 	Direct         bool     `json:"direct"`
 	DependencyPath []string `json:"dependency_path,omitempty"`
+
+	// Fingerprint identifies this finding across scans. See Fingerprints.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // Dependency represents a single component discovered by the SCA engine.
@@ -63,6 +69,21 @@ type Dependency struct {
 	Version   string `json:"version"`
 	Ecosystem string `json:"ecosystem"`
 	Manifest  string `json:"manifest"`
+
+	// Direct records whether the project declares this component itself. In an
+	// SBOM it is what the root component's own edges are drawn from.
+	Direct bool `json:"direct"`
+
+	// Requires is what this component itself depends on, within the same
+	// inventory. It carries the dependency graph into the SBOM, where a flat
+	// component list cannot say which component pulled in which.
+	Requires []DependencyRef `json:"requires,omitempty"`
+}
+
+// DependencyRef identifies one component of the inventory.
+type DependencyRef struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 // LeakFinding represents a detected secret or credential leak
@@ -79,6 +100,9 @@ type LeakFinding struct {
 	InGitHistory  bool            `json:"in_git_history,omitempty"`
 	CommitHash    string          `json:"commit_hash,omitempty"`
 	AIRemediation string          `json:"ai_remediation,omitempty"`
+
+	// Fingerprint identifies this finding across scans. See Fingerprints.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // ScanResult holds the complete result of a scan

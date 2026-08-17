@@ -78,6 +78,9 @@ func TestPipfileLock(t *testing.T) {
 			if len(d.Path) != 0 {
 				t.Errorf("%s carries route %v, which Pipfile.lock cannot support", d.Name, d.Path)
 			}
+			if len(d.Requires) != 0 {
+				t.Errorf("%s carries edges %v, which Pipfile.lock does not record", d.Name, d.Requires)
+			}
 		}
 	})
 }
@@ -159,6 +162,21 @@ func TestUVLock(t *testing.T) {
 			if d.Direct != direct[d.Name] {
 				t.Errorf("%s direct = %v, want %v", d.Name, d.Direct, direct[d.Name])
 			}
+		}
+	})
+
+	t.Run("edges are carried for the SBOM", func(t *testing.T) {
+		// Requires is the edge set the SBOM's dependency graph is built from —
+		// every edge, where Path keeps only the shortest route.
+		d, _ := findDep(deps, "requests")
+		want := []Ref{
+			{Name: "certifi", Version: "2026.7.22"},
+			{Name: "charset-normalizer", Version: "2.0.12"},
+			{Name: "idna", Version: "3.18"},
+			{Name: "urllib3", Version: "1.26.20"},
+		}
+		if !reflect.DeepEqual(d.Requires, want) {
+			t.Errorf("requests requires %v, want %v", d.Requires, want)
 		}
 	})
 

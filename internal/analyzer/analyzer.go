@@ -93,6 +93,9 @@ func (a *Analyzer) Run() (*ScanResult, error) {
 	// makes every output format lead with the most critical findings.
 	a.applySuppressions(result)
 	SortFindings(result)
+	// After sorting, so that the occurrence number two indistinguishable
+	// findings are told apart by is assigned in a deterministic order.
+	Fingerprints(result)
 	result.ComputeStats()
 
 	// Print summary
@@ -222,7 +225,7 @@ func (a *Analyzer) runSAST(files []string, result *ScanResult) error {
 			for file := range fileCh {
 				findings := sastEngine.Analyze(file)
 				for _, f := range findings {
-					findingCh <- Finding(f)
+					findingCh <- fromEngineFinding(f)
 				}
 				bar.Add(1)
 			}
@@ -369,17 +372,23 @@ func (a *Analyzer) runSCA(result *ScanResult) error {
 	// Record the full component inventory for SBOM generation (all
 	// dependencies, not just the vulnerable ones surfaced as findings).
 	for _, d := range scaEngine.Dependencies() {
+		requires := make([]DependencyRef, 0, len(d.Requires))
+		for _, r := range d.Requires {
+			requires = append(requires, DependencyRef{Name: r.Name, Version: r.Version})
+		}
 		result.Dependencies = append(result.Dependencies, Dependency{
 			Name:      d.Name,
 			Version:   d.Version,
 			Ecosystem: d.Ecosystem,
 			Manifest:  d.File,
+			Direct:    d.Direct,
+			Requires:  requires,
 		})
 	}
 
 	minWeight := config.Severity(a.cfg.MinSeverity).Weight()
 	for _, f := range findings {
-		sf := SCAFinding(f)
+		sf := fromSCAFinding(f)
 		if sf.Severity.Weight() >= minWeight {
 			a.mu.Lock()
 			result.AddSCAFinding(sf)

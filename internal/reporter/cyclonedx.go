@@ -65,12 +65,20 @@ func encodePurlSegment(s string) string {
 }
 
 type cdxBOM struct {
-	BOMFormat    string         `json:"bomFormat"`
-	SpecVersion  string         `json:"specVersion"`
-	SerialNumber string         `json:"serialNumber,omitempty"`
-	Version      int            `json:"version"`
-	Metadata     cdxMetadata    `json:"metadata"`
-	Components   []cdxComponent `json:"components"`
+	BOMFormat    string          `json:"bomFormat"`
+	SpecVersion  string          `json:"specVersion"`
+	SerialNumber string          `json:"serialNumber,omitempty"`
+	Version      int             `json:"version"`
+	Metadata     cdxMetadata     `json:"metadata"`
+	Components   []cdxComponent  `json:"components"`
+	Dependencies []cdxDependency `json:"dependencies,omitempty"`
+}
+
+// cdxDependency is one node of the CycloneDX dependency graph: a component,
+// and the components it depends on, both named by bom-ref.
+type cdxDependency struct {
+	Ref       string   `json:"ref"`
+	DependsOn []string `json:"dependsOn"`
 }
 
 type cdxMetadata struct {
@@ -140,6 +148,7 @@ func buildCycloneDX(result *analyzer.ScanResult) cdxBOM {
 	if name == "." || name == "" || name == string(filepath.Separator) {
 		name = "application"
 	}
+	rootRef := "root:" + name
 
 	return cdxBOM{
 		BOMFormat:   "CycloneDX",
@@ -156,12 +165,81 @@ func buildCycloneDX(result *analyzer.ScanResult) cdxBOM {
 			},
 			Component: &cdxComponent{
 				Type:   "application",
-				BOMRef: "root:" + name,
+				BOMRef: rootRef,
 				Name:   name,
 			},
 		},
-		Components: components,
+		Components:   components,
+		Dependencies: buildDependencyGraph(result, rootRef, seen),
 	}
+}
+
+// buildDependencyGraph turns the inventory's edges into the CycloneDX
+// dependencies section: which component pulled in which, with the root
+// component depending on what the project declares.
+//
+// Without it the SBOM is a flat list, and its consumer can see that a
+// vulnerable component is present but not how it got there — which is the
+// question that decides whether a team can act on it. A component with no
+// outgoing edges is still listed, with an empty dependsOn: in CycloneDX that
+// asserts it has no dependencies, whereas leaving it out asserts nothing.
+//
+// Edges pointing outside the component list are dropped rather than emitted as
+// dangling refs. That happens when a lockfile records a requirement on
+// something no tier could resolve, and a ref to a component that is not in the
+// document makes the BOM invalid.
+func buildDependencyGraph(result *analyzer.ScanResult, rootRef string, known map[string]bool) []cdxDependency {
+	if len(known) == 0 {
+		return nil
+	}
+
+	// A purl can occur several times over — the same package in two manifests,
+	// or in both the prod and dev maps of one — so the edges are unioned rather
+	// than taken from whichever entry happens to come last.
+	edges := make(map[string]map[string]bool, len(known))
+	var direct []string
+
+	for _, d := range result.Dependencies {
+		purl := purlFor(d.Ecosystem, d.Name, d.Version)
+		if edges[purl] == nil {
+			edges[purl] = make(map[string]bool)
+		}
+		if d.Direct {
+			direct = append(direct, purl)
+		}
+		for _, r := range d.Requires {
+			if child := purlFor(d.Ecosystem, r.Name, r.Version); known[child] {
+				edges[purl][child] = true
+			}
+		}
+	}
+
+	graph := make([]cdxDependency, 0, len(edges)+1)
+	graph = append(graph, cdxDependency{Ref: rootRef, DependsOn: sortedUnique(direct)})
+	for purl, children := range edges {
+		dependsOn := make([]string, 0, len(children))
+		for child := range children {
+			dependsOn = append(dependsOn, child)
+		}
+		graph = append(graph, cdxDependency{Ref: purl, DependsOn: sortedUnique(dependsOn)})
+	}
+
+	sort.Slice(graph, func(i, j int) bool { return graph[i].Ref < graph[j].Ref })
+	return graph
+}
+
+// sortedUnique returns the refs in a stable order with duplicates removed, and
+// an empty slice rather than nil so the JSON carries "[]" instead of "null".
+func sortedUnique(refs []string) []string {
+	sort.Strings(refs)
+
+	unique := make([]string, 0, len(refs))
+	for i, ref := range refs {
+		if i == 0 || ref != refs[i-1] {
+			unique = append(unique, ref)
+		}
+	}
+	return unique
 }
 
 // newSerialNumber returns a CycloneDX urn:uuid serial number (UUID v4).
