@@ -1091,6 +1091,194 @@ func normalizePythonName(name string) string {
 	return b.String()
 }
 
+// ============= pipenv =============
+
+// PipfileLockParser parses Pipenv's Pipfile.lock.
+//
+// It is the one lockfile here that records no graph at all: "default" and
+// "develop" are flat maps of name to resolved version, with nothing saying
+// which package asked for which. So this tier buys the transitive *set* at
+// exact versions — the part that decides whether an advisory matches — and not
+// the routes. A finding in a package the project never named will say so, and
+// stop there.
+//
+// The direct set still comes from the sibling Pipfile, which is where the
+// project's own [packages] and [dev-packages] are declared.
+type PipfileLockParser struct{}
+
+func (p *PipfileLockParser) Name() string    { return "pipenv (lockfile)" }
+func (p *PipfileLockParser) Files() []string { return []string{"Pipfile.lock"} }
+func (p *PipfileLockParser) Lockfile()       {}
+
+// pipfileEntry is one locked package. A package installed from version control
+// or a local path carries "git" or "path" instead of a version, and there is
+// nothing for an advisory to match against.
+type pipfileEntry struct {
+	Version string `json:"version"`
+}
+
+func (p *PipfileLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock struct {
+		Default map[string]pipfileEntry `json:"default"`
+		Develop map[string]pipfileEntry `json:"develop"`
+	}
+	if err := json.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+	if len(lock.Default)+len(lock.Develop) == 0 {
+		return nil, nil
+	}
+
+	// Development packages are installed into the same environment as the
+	// rest, so both maps contribute. A name in both is one installation.
+	roots := declaredInPipfile(filepath.Join(filepath.Dir(path), "Pipfile"))
+	seen := make(map[string]bool, len(lock.Default)+len(lock.Develop))
+	deps := make([]Dependency, 0, len(lock.Default)+len(lock.Develop))
+
+	for _, group := range []map[string]pipfileEntry{lock.Default, lock.Develop} {
+		for _, name := range sortedKeys(group) {
+			key := normalizePythonName(name)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+
+			// Pipenv writes the resolved version as "==3.12.1". Anything else
+			// — "*", or nothing at all for a VCS entry — is not a version, and
+			// pinnedVersion reports it as such so it is left unmatched.
+			version, pinned := pinnedVersion(group[name].Version, true)
+			_, direct := roots[key]
+			deps = append(deps, Dependency{
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "pypi",
+				File:           path,
+				Direct:         direct,
+			})
+		}
+	}
+	return deps, nil
+}
+
+// declaredInPipfile reads [packages] and [dev-packages] from a Pipfile. Its
+// absence costs only the direct/transitive split.
+func declaredInPipfile(path string) map[string]string {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil
+	}
+	var manifest struct {
+		Packages    map[string]any `toml:"packages"`
+		DevPackages map[string]any `toml:"dev-packages"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil
+	}
+
+	roots := make(map[string]string)
+	for _, group := range []map[string]any{manifest.Packages, manifest.DevPackages} {
+		for name := range group {
+			roots[normalizePythonName(name)] = ""
+		}
+	}
+	return roots
+}
+
+// ============= uv =============
+
+// UVLockParser parses uv.lock.
+//
+// uv records the graph the way Cargo does, and marks the root the same way: the
+// project itself is a package whose source is "virtual" or "editable" rather
+// than a registry, and its dependency list — together with the per-group
+// dev-dependencies beside it — is the direct set. No sibling manifest needed.
+type UVLockParser struct{}
+
+func (p *UVLockParser) Name() string    { return "uv (lockfile)" }
+func (p *UVLockParser) Files() []string { return []string{"uv.lock"} }
+func (p *UVLockParser) Lockfile()       {}
+
+type uvLock struct {
+	Package []uvPackage `toml:"package"`
+}
+
+type uvPackage struct {
+	Name    string `toml:"name"`
+	Version string `toml:"version"`
+	// Source distinguishes a package fetched from an index from the project
+	// itself. Its single key is the kind: "registry", "virtual", "editable",
+	// "directory", "git".
+	Source map[string]any `toml:"source"`
+	// Dependencies entries are inline tables carrying at least a name, and a
+	// version too where the lock holds the same name more than once.
+	Dependencies    []uvRef            `toml:"dependencies"`
+	DevDependencies map[string][]uvRef `toml:"dev-dependencies"`
+}
+
+type uvRef struct {
+	Name string `toml:"name"`
+}
+
+func (p *UVLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock uvLock
+	if err := toml.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node, len(lock.Package))
+	roots := make(map[string]string)
+
+	for _, pkg := range lock.Package {
+		if pkg.Name == "" || pkg.Version == "" {
+			continue
+		}
+
+		edges := make(map[string]string, len(pkg.Dependencies))
+		for _, ref := range pkg.Dependencies {
+			edges[normalizePythonName(ref.Name)] = ""
+		}
+		for _, group := range pkg.DevDependencies {
+			for _, ref := range group {
+				edges[normalizePythonName(ref.Name)] = ""
+			}
+		}
+
+		// A package that was not fetched from an index is the project, or one
+		// of its workspace members: its own code, and what it requires is what
+		// the project requires.
+		if !uvFromRegistry(pkg.Source) {
+			for name := range edges {
+				roots[name] = ""
+			}
+			continue
+		}
+		nodes[normalizePythonName(pkg.Name)] = node{name: pkg.Name, version: pkg.Version, deps: edges}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+	return walkGraph(nodes, roots, pythonResolver(nodes), "pypi", path), nil
+}
+
+// uvFromRegistry reports whether a package was fetched from a package index,
+// which is what separates a dependency from the project depending on it.
+func uvFromRegistry(source map[string]any) bool {
+	_, registry := source["registry"]
+	return registry
+}
+
 // npmNameFromKey recovers a package name from its installation path. Splitting
 // on the last "node_modules/" keeps scoped names intact: the "/" inside
 // "@scope/pkg" is not a path separator here.

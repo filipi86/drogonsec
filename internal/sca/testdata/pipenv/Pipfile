@@ -1,0 +1,11 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[packages]
+requests = "==2.27.0"
+django = "==3.2.12"
+
+[dev-packages]
+jinja2 = "==3.0.0"

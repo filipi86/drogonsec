@@ -96,6 +96,8 @@ func (e *Engine) registerParsers() {
 		&ComposerLockParser{},
 		&CargoLockParser{},
 		&PoetryLockParser{},
+		&PipfileLockParser{},
+		&UVLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
 		&RequirementsTXTParser{},
