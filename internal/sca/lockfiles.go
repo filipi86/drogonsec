@@ -238,6 +238,23 @@ func walkGraph(nodes map[string]node, roots map[string]string, resolve resolver,
 	deps := make([]Dependency, 0, len(nodes))
 	var queue []queued
 
+	// requires collects a node's outgoing edges, resolved to the packages they
+	// land on. It is the same resolution the traversal performs, kept rather
+	// than discarded: the walk only needs the shortest route to each package,
+	// while an SBOM has to carry every edge so its consumer can work out routes
+	// of its own.
+	requires := func(key string) []Ref {
+		var refs []Ref
+		for _, name := range sortedKeys(nodes[key].deps) {
+			child, ok := resolve(key, name, nodes[key].deps[name])
+			if !ok {
+				continue
+			}
+			refs = append(refs, Ref{Name: nodes[child].name, Version: nodes[child].version})
+		}
+		return refs
+	}
+
 	for _, name := range sortedKeys(roots) {
 		key, ok := resolve("", name, roots[name])
 		if !ok || seen[key] {
@@ -250,6 +267,7 @@ func walkGraph(nodes map[string]node, roots map[string]string, resolve resolver,
 			Ecosystem: ecosystem,
 			File:      manifest,
 			Direct:    true,
+			Requires:  requires(key),
 		})
 		queue = append(queue, queued{key: key, path: []string{nodes[key].name}})
 	}
@@ -276,6 +294,7 @@ func walkGraph(nodes map[string]node, roots map[string]string, resolve resolver,
 				Ecosystem: ecosystem,
 				File:      manifest,
 				Path:      route,
+				Requires:  requires(key),
 			})
 			queue = append(queue, queued{key: key, path: append(route, nodes[key].name)})
 		}
@@ -290,6 +309,7 @@ func walkGraph(nodes map[string]node, roots map[string]string, resolve resolver,
 			Version:   nodes[key].version,
 			Ecosystem: ecosystem,
 			File:      manifest,
+			Requires:  requires(key),
 		})
 	}
 

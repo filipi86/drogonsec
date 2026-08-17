@@ -63,6 +63,21 @@ type Dependency struct {
 	Version   string `json:"version"`
 	Ecosystem string `json:"ecosystem"`
 	Manifest  string `json:"manifest"`
+
+	// Direct records whether the project declares this component itself. In an
+	// SBOM it is what the root component's own edges are drawn from.
+	Direct bool `json:"direct"`
+
+	// Requires is what this component itself depends on, within the same
+	// inventory. It carries the dependency graph into the SBOM, where a flat
+	// component list cannot say which component pulled in which.
+	Requires []DependencyRef `json:"requires,omitempty"`
+}
+
+// DependencyRef identifies one component of the inventory.
+type DependencyRef struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 // LeakFinding represents a detected secret or credential leak

@@ -58,6 +58,14 @@ type Dependency struct {
 	// what ships.
 	VersionIsRange bool
 
+	// Requires names what this dependency itself resolves to, within the same
+	// inventory. Where Path answers "how did this get here" with one route,
+	// Requires is the edge set the routes were derived from — every edge, not
+	// just the ones on a shortest path — which is what an SBOM has to carry for
+	// a consumer to compute its own answers. Empty for a dependency read from a
+	// manifest, which records no edges at all.
+	Requires []Ref
+
 	// Path is the chain of packages that introduces a transitive dependency,
 	// from a direct dependency inwards and excluding the dependency itself:
 	// ["express", "cookie"] means express depends on cookie which depends on
@@ -65,6 +73,13 @@ type Dependency struct {
 	// be established. It answers the first question anyone asks about an
 	// advisory in a package they have never heard of.
 	Path []string
+}
+
+// Ref identifies one dependency within an inventory. Name and version together
+// are what an advisory, a Package URL and a reader all key on.
+type Ref struct {
+	Name    string
+	Version string
 }
 
 // ManifestParser defines the interface for manifest file parsers

@@ -215,10 +215,19 @@ consumed by Grype, Trivy, and Dependency-Track:
 drogonsec scan . --format cyclonedx --output sbom.json
 ```
 
-Each dependency becomes a CycloneDX component with a Package URL (purl). The v1
-SBOM is a flat component list; the transitive dependency graph and SPDX output
-are planned for a later release. See [Usage → Output Formats](usage.md#output-formats)
-for details.
+Each dependency becomes a CycloneDX component with a Package URL (purl), and the
+`dependencies` section records which component pulled in which, with the root
+component depending on what the project declares.
+
+The graph carries **every** edge, not one route per component. A package
+required by three others is recorded three times over, because the question an
+SBOM consumer asks — "what would I have to change to be rid of this" — has as
+many answers as there are routes. That is a different thing from the
+`dependency_path` in a finding, which deliberately shows only the shortest.
+
+A component read from a manifest alone contributes no edges, because a manifest
+records none. SPDX output is planned for a later release. See
+[Usage → Output Formats](usage.md#output-formats) for details.
 
 ---
 
