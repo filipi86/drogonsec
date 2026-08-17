@@ -54,11 +54,16 @@ func TestFingerprintIgnoresReindentation(t *testing.T) {
 func TestFingerprintIsIndependentOfTheCheckoutDirectory(t *testing.T) {
 	// The same repository scanned on a developer's machine and in CI has to
 	// produce the same identities, or every alert reopens on the first CI run.
+	//
+	// The sample code is deliberately inert. What it says does not matter to a
+	// fingerprint, and writing a real vulnerable pattern here would make the
+	// scanner flag its own test data when it scans this repository.
+	const sample = "cfg.Verify = caller.Choice()"
 	local := scanWith("/home/alice/work/repo", []Finding{
-		{RuleID: "GO-005", File: "/home/alice/work/repo/pkg/tls.go", Code: "InsecureSkipVerify: true"},
+		{RuleID: "GO-005", File: "/home/alice/work/repo/pkg/tls.go", Code: sample},
 	}, nil, nil)
 	ci := scanWith("/github/workspace", []Finding{
-		{RuleID: "GO-005", File: "/github/workspace/pkg/tls.go", Code: "InsecureSkipVerify: true"},
+		{RuleID: "GO-005", File: "/github/workspace/pkg/tls.go", Code: sample},
 	}, nil, nil)
 
 	if local.SASTFindings[0].Fingerprint != ci.SASTFindings[0].Fingerprint {
