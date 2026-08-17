@@ -1,6 +1,7 @@
 package sca
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/fs"
 	"path/filepath"
@@ -135,13 +136,67 @@ func installedKey(projectDir, packageDir string) (string, bool) {
 	return "", false
 }
 
-// npmProjectDirs lists, in a stable order, the directories holding an npm
-// manifest.
-func npmProjectDirs(deps []Dependency) []string {
+// parseInstalledComposer reads the dependency tree from vendor/composer/
+// installed.json.
+//
+// Composer writes this file on every install, and it is the exact record of
+// what landed in vendor/: a resolved version for every package, and each
+// package's own require block. Where node_modules has to be walked and its
+// layout interpreted, PHP hands over the whole graph in one file — the same
+// shape composer.lock carries, so the same parsing serves both.
+//
+// It is read only for a project that does not commit its lockfile. That is
+// common enough in PHP to matter: composer.lock is gitignored in plenty of
+// library repositories, where committing it is in fact the documented advice,
+// and without this such a project is scanned from composer.json alone — a
+// handful of names at ranges, with the tree they pull in unseen.
+func parseInstalledComposer(projectDir string) ([]Dependency, error) {
+	path := filepath.Join(projectDir, "vendor", "composer", "installed.json")
+
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Composer 2 wraps the list in an object that also names the development
+	// packages; Composer 1 writes the bare array. The first meaningful
+	// character tells them apart, which is steadier than unmarshalling twice
+	// and reading the failure as a format signal.
+	var packages []composerPackage
+	if bytes.HasPrefix(bytes.TrimLeft(data, " \t\r\n"), []byte("[")) {
+		if err := json.Unmarshal(data, &packages); err != nil {
+			return nil, err
+		}
+	} else {
+		var installed struct {
+			Packages []composerPackage `json:"packages"`
+		}
+		if err := json.Unmarshal(data, &installed); err != nil {
+			return nil, err
+		}
+		packages = installed.Packages
+	}
+
+	nodes := composerNodes(packages)
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	// The findings are attributed to composer.json: it is the file in the
+	// repository, while vendor/ is a build product that is usually not.
+	manifest := filepath.Join(projectDir, "composer.json")
+	roots := declaredInComposerJSON(manifest)
+
+	return walkGraph(nodes, roots, composerResolver(nodes), "packagist", manifest), nil
+}
+
+// projectDirs lists, in a stable order, the directories holding a manifest of
+// one ecosystem.
+func projectDirs(deps []Dependency, ecosystem string) []string {
 	seen := make(map[string]bool)
 	var dirs []string
 	for _, dep := range deps {
-		if dep.Ecosystem != "npm" {
+		if dep.Ecosystem != ecosystem {
 			continue
 		}
 		dir := filepath.Dir(dep.File)
