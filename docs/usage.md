@@ -168,16 +168,30 @@ Example output (truncated):
   },
   "components": [
     { "type": "library", "bom-ref": "pkg:npm/lodash@4.17.15", "name": "lodash", "version": "4.17.15", "purl": "pkg:npm/lodash@4.17.15" }
+  ],
+  "dependencies": [
+    { "ref": "root:myproject", "dependsOn": [ "pkg:npm/lodash@4.17.15" ] },
+    { "ref": "pkg:npm/lodash@4.17.15", "dependsOn": [] }
   ]
 }
 ```
 
+The `dependencies` section records which component pulled in which, with the
+root component depending on what the project declares. A leaf appears with an
+empty `dependsOn` rather than being left out: in CycloneDX that asserts it has
+no dependencies, while omitting the entry asserts nothing.
+
+It carries **every** edge, not one route per component, so a consumer can work
+out for itself all the ways a vulnerable package is reachable. That is
+deliberately more than the `dependency_path` on a finding, which shows only the
+shortest route — the hop a developer can actually change.
+
 > **Scope:** where a lockfile or an installed tree is available, the inventory
 > covers the full transitive set — for npm, Python, PHP, Rust and Ruby that is
-> every package that will be installed, not only the declared ones. The
-> CycloneDX `dependencies` graph recording which component pulled in which is
-> not emitted yet; that and SPDX output are planned for a later release. The
-> SBOM is derived from the SCA engine, so do not combine it with `--no-sca`.
+> every package that will be installed, not only the declared ones. An ecosystem
+> read from a manifest alone contributes its components without edges, because a
+> manifest records none. SPDX output is planned for a later release. The SBOM is
+> derived from the SCA engine, so do not combine it with `--no-sca`.
 
 ---
 
