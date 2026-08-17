@@ -868,15 +868,16 @@ func (p *CargoTOMLParser) Parse(path string) ([]Dependency, error) {
 	var deps []Dependency
 	for _, table := range []map[string]any{manifest.Dependencies, manifest.DevDependencies, manifest.BuildDependencies} {
 		for _, name := range sortedKeys(table) {
-			version, ok := cargoDeclaredVersion(table[name])
+			version, pinned, ok := cargoDeclaredVersion(table[name])
 			if !ok {
 				continue
 			}
 			deps = append(deps, Dependency{
-				Name:      name,
-				Version:   version,
-				Ecosystem: "cargo",
-				File:      path,
+				Name:           name,
+				Version:        version,
+				VersionIsRange: !pinned,
+				Ecosystem:      "cargo",
+				File:           path,
 			})
 		}
 	}
@@ -893,16 +894,21 @@ func (p *CargoTOMLParser) Parse(path string) ([]Dependency, error) {
 // dependency reported without a version matches every advisory for that crate
 // or none, depending on the database's mood, and neither answer is worth
 // giving.
-func cargoDeclaredVersion(entry any) (string, bool) {
+// Cargo is the ecosystem where a bare version is *not* a pin: `serde = "1.0"`
+// is shorthand for `^1.0`, and only `=1.0.130` names a single release. Passing
+// false here is the whole difference from every other manifest.
+func cargoDeclaredVersion(entry any) (version string, pinned, found bool) {
 	switch v := entry.(type) {
 	case string:
-		return stripVersionPrefix(v), true
+		version, pinned = pinnedVersion(v, false)
+		return version, pinned, true
 	case map[string]any:
-		if version, ok := v["version"].(string); ok {
-			return stripVersionPrefix(version), true
+		if spec, ok := v["version"].(string); ok {
+			version, pinned = pinnedVersion(spec, false)
+			return version, pinned, true
 		}
 	}
-	return "", false
+	return "", false, false
 }
 
 // ============= poetry =============
