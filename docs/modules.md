@@ -80,7 +80,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 
 | Ecosystem | Files | Depth |
 |---|---|---|
-| **Node.js** | `package-lock.json`, `yarn.lock`, `package.json` | Full tree when a lockfile is present |
+| **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
 | **Python** | `requirements.txt`, `requirements-dev.txt` | Declared only |
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
@@ -105,6 +105,22 @@ read from `package-lock.json`.
 the YAML of Yarn 2 and later. Neither records which packages the project itself
 declared, so the sibling `package.json` supplies that; without one every package
 is still reported and only the direct/transitive split is lost.
+
+For npm the engine falls back through three sources, in this order:
+
+1. **A lockfile** — `package-lock.json`, then `yarn.lock`. What *will* be
+   installed, reproducibly.
+2. **`node_modules/` on disk** — what *is* installed. Read only when no lockfile
+   covers the project, which makes a repository that does not commit one
+   scannable in full: a CI job that runs `npm ci` before the scan, or any
+   working copy after an install. Each installed package carries its own
+   manifest with a resolved version, and the directory layout is the resolution.
+3. **`package.json`** — the declared dependencies, at ranges. The last resort,
+   and the only one that leaves the transitive tree unseen.
+
+None of the three touches the network. Resolving ranges against a registry would
+answer a different question — what would be installed today — and would put a
+scan that currently runs air-gapped on the far side of the internet.
 
 Not yet parsed, so a project relying on one of these is **not** covered by the
 ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,

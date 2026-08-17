@@ -241,6 +241,24 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 		}
 	}
 
+	// Second source of truth, for projects that do not commit a lockfile: the
+	// tree already installed on disk. It is read only where no lockfile spoke,
+	// because a lockfile describes what will be installed reproducibly, while
+	// node_modules describes one machine's current state — which may be stale,
+	// and is absent altogether until somebody runs an install.
+	for _, dir := range npmProjectDirs(manifestDeps) {
+		key := lockKey(filepath.Join(dir, "package.json"), "npm")
+		if locked[key] {
+			continue
+		}
+		installed, err := parseInstalledNodeModules(dir)
+		if err != nil || len(installed) == 0 {
+			continue
+		}
+		locked[key] = true
+		lockfileDeps = append(lockfileDeps, installed...)
+	}
+
 	for _, dep := range manifestDeps {
 		if locked[lockKey(dep.File, dep.Ecosystem)] {
 			continue
