@@ -65,6 +65,15 @@ venv/
 .venv/
 .pytest_cache/
 
+# …except the one virtualenv that is test data. The SCA engine reads a
+# project's .venv to find what is installed, so the fixture that exercises it
+# has to be a real virtualenv layout — and the rule above silently swallowed
+# it, leaving the tests green locally against untracked files and red in CI
+# against nothing. Re-including needs the directory itself un-excluded first:
+# git never descends into an excluded directory, so a negation naming only the
+# files inside it would not match.
+!internal/sca/testdata/pyvenv/.venv/
+
 # Coverage
 .coverage
 
