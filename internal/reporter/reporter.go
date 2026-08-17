@@ -492,6 +492,23 @@ type sarifResult struct {
 	Level     string          `json:"level"`
 	Message   sarifMessage    `json:"message"`
 	Locations []sarifLocation `json:"locations"`
+
+	// PartialFingerprints is how a SARIF consumer tracks one finding across
+	// runs. GitHub code scanning uses it to decide whether an alert is new,
+	// still open or fixed; without it, it falls back to matching on location,
+	// so inserting a line above a finding closes the old alert and opens an
+	// identical one.
+	PartialFingerprints map[string]string `json:"partialFingerprints,omitempty"`
+}
+
+// sarifFingerprints wraps a fingerprint in the map SARIF expects. The key names
+// the scheme that produced the value, which is what lets a consumer keep
+// working when a tool later adds a second one.
+func sarifFingerprints(fingerprint string) map[string]string {
+	if fingerprint == "" {
+		return nil
+	}
+	return map[string]string{"drogonsec/" + analyzer.FingerprintVersion: fingerprint}
 }
 
 type sarifMessage struct {
@@ -552,9 +569,10 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		}
 
 		results = append(results, sarifResult{
-			RuleID:  f.RuleID,
-			Level:   sarifLevel(f.Severity),
-			Message: sarifMessage{Text: fmt.Sprintf("%s - %s", f.Title, f.Remediation)},
+			RuleID:              f.RuleID,
+			Level:               sarifLevel(f.Severity),
+			Message:             sarifMessage{Text: fmt.Sprintf("%s - %s", f.Title, f.Remediation)},
+			PartialFingerprints: sarifFingerprints(f.Fingerprint),
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
@@ -581,9 +599,10 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		}
 
 		results = append(results, sarifResult{
-			RuleID:  ruleID,
-			Level:   sarifLevel(f.Severity),
-			Message: sarifMessage{Text: fmt.Sprintf("Secret detected: %s", f.Type)},
+			RuleID:              ruleID,
+			Level:               sarifLevel(f.Severity),
+			Message:             sarifMessage{Text: fmt.Sprintf("Secret detected: %s", f.Type)},
+			PartialFingerprints: sarifFingerprints(f.Fingerprint),
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					ArtifactLocation: sarifArtifactLocation{URI: sarifRelPath(result.TargetPath, f.File)},
@@ -623,9 +642,10 @@ func (r *SARIFReporter) Write(result *analyzer.ScanResult, w io.Writer) error {
 		}
 
 		results = append(results, sarifResult{
-			RuleID:  ruleID,
-			Level:   sarifLevel(f.Severity),
-			Message: sarifMessage{Text: message},
+			RuleID:              ruleID,
+			Level:               sarifLevel(f.Severity),
+			Message:             sarifMessage{Text: message},
+			PartialFingerprints: sarifFingerprints(f.Fingerprint),
 			Locations: []sarifLocation{{
 				PhysicalLocation: sarifPhysicalLocation{
 					// The manifest that declares the dependency is the closest
