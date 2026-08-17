@@ -199,11 +199,12 @@ like Grype, Trivy, and Dependency-Track.
 drogonsec scan . --format cyclonedx --output sbom.json
 ```
 
-> **Note:** the SBOM is a flat component inventory with Package URLs (purls).
-> Where a lockfile or an installed tree is available the inventory covers the
-> full transitive set, but the CycloneDX `dependencies` graph that records which
-> component pulled in which is not emitted yet. That and SPDX output are planned
-> for a later release.
+> **Note:** where a lockfile or an installed tree is available, the SBOM covers
+> the full transitive set and carries the CycloneDX `dependencies` graph — every
+> edge, so a consumer can work out for itself which component pulled in a
+> vulnerable one. An ecosystem read from a manifest alone contributes its
+> declared components without edges, because a manifest records none. SPDX
+> output is planned for a later release.
 
 ---
 

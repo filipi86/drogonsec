@@ -90,6 +90,12 @@ func TestInstalledPython(t *testing.T) {
 				t.Errorf("%s is behind an extra and is not installed", name)
 			}
 		}
+		requests, _ := findDep(deps, "requests")
+		for _, r := range requests.Requires {
+			if r.Name == "PySocks" {
+				t.Error("requests was given an edge to a package behind an extra")
+			}
+		}
 	})
 
 	t.Run("a requirement no marker selected simply resolves to nothing", func(t *testing.T) {

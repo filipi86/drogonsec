@@ -369,11 +369,17 @@ func (a *Analyzer) runSCA(result *ScanResult) error {
 	// Record the full component inventory for SBOM generation (all
 	// dependencies, not just the vulnerable ones surfaced as findings).
 	for _, d := range scaEngine.Dependencies() {
+		requires := make([]DependencyRef, 0, len(d.Requires))
+		for _, r := range d.Requires {
+			requires = append(requires, DependencyRef{Name: r.Name, Version: r.Version})
+		}
 		result.Dependencies = append(result.Dependencies, Dependency{
 			Name:      d.Name,
 			Version:   d.Version,
 			Ecosystem: d.Ecosystem,
 			Manifest:  d.File,
+			Direct:    d.Direct,
+			Requires:  requires,
 		})
 	}
 
