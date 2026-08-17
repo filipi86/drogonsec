@@ -152,10 +152,11 @@ like Grype, Trivy, and Dependency-Track.
 drogonsec scan . --format cyclonedx --output sbom.json
 ```
 
-> **Note:** the SBOM is a flat component inventory with Package URLs (purls). It
-> does not yet express the transitive dependency graph, because the SCA engine
-> resolves manifests rather than full lockfiles. Transitive resolution and SPDX
-> output are planned for a later release.
+> **Note:** the SBOM is a flat component inventory with Package URLs (purls).
+> Where a lockfile or an installed tree is available the inventory covers the
+> full transitive set, but the CycloneDX `dependencies` graph that records which
+> component pulled in which is not emitted yet. That and SPDX output are planned
+> for a later release.
 
 ---
 

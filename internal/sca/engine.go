@@ -86,6 +86,7 @@ func (e *Engine) registerParsers() {
 	e.parsers = []ManifestParser{
 		&PackageLockParser{},
 		&YarnLockParser{},
+		&ComposerLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
 		&RequirementsTXTParser{},
@@ -244,19 +245,21 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	// Second source of truth, for projects that do not commit a lockfile: the
 	// tree already installed on disk. It is read only where no lockfile spoke,
 	// because a lockfile describes what will be installed reproducibly, while
-	// node_modules describes one machine's current state — which may be stale,
-	// and is absent altogether until somebody runs an install.
-	for _, dir := range npmProjectDirs(manifestDeps) {
-		key := lockKey(filepath.Join(dir, "package.json"), "npm")
-		if locked[key] {
-			continue
+	// an installed tree describes one machine's current state — which may be
+	// stale, and is absent altogether until somebody runs an install.
+	for _, source := range installedSources {
+		for _, dir := range projectDirs(manifestDeps, source.ecosystem) {
+			key := lockKey(filepath.Join(dir, source.manifest), source.ecosystem)
+			if locked[key] {
+				continue
+			}
+			installed, err := source.parse(dir)
+			if err != nil || len(installed) == 0 {
+				continue
+			}
+			locked[key] = true
+			lockfileDeps = append(lockfileDeps, installed...)
 		}
-		installed, err := parseInstalledNodeModules(dir)
-		if err != nil || len(installed) == 0 {
-			continue
-		}
-		locked[key] = true
-		lockfileDeps = append(lockfileDeps, installed...)
 	}
 
 	for _, dep := range manifestDeps {
@@ -267,6 +270,20 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	}
 
 	return lockfileDeps, nil
+}
+
+// installedSource is a reader for one ecosystem's installed tree: the
+// directory it is rooted at is a project directory, and the findings are
+// attributed to the named manifest rather than to the build product itself.
+type installedSource struct {
+	ecosystem string
+	manifest  string
+	parse     func(projectDir string) ([]Dependency, error)
+}
+
+var installedSources = []installedSource{
+	{ecosystem: "npm", manifest: "package.json", parse: parseInstalledNodeModules},
+	{ecosystem: "packagist", manifest: "composer.json", parse: parseInstalledComposer},
 }
 
 // lockKey identifies an ecosystem within one project directory.
@@ -671,7 +688,11 @@ func (p *ComposerParser) Parse(path string) ([]Dependency, error) {
 	var deps []Dependency
 	addDeps := func(m map[string]string) {
 		for name, version := range m {
-			if name == "php" {
+			// Platform requirements — php itself, ext-json, lib-openssl,
+			// composer-runtime-api — describe the interpreter rather than code
+			// fetched from a registry. Reported as packages they inflate the
+			// dependency count with names no advisory database holds.
+			if !isPackagistName(name) {
 				continue
 			}
 			deps = append(deps, Dependency{

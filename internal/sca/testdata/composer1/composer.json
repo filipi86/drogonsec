@@ -1,0 +1,11 @@
+{
+  "name": "drogonsec/fixture",
+  "version": "1.0.0",
+  "require": {
+    "php": ">=7.2",
+    "ext-json": "*",
+    "guzzlehttp/guzzle": "6.5.0",
+    "symfony/http-kernel": "5.4.0"
+  },
+  "require-dev": { "monolog/monolog": "1.25.0" }
+}

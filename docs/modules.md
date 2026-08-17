@@ -85,7 +85,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
 | **Ruby** | `Gemfile.lock` | Full tree |
-| **PHP** | `composer.json` | Declared only |
+| **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
 | **Dart** | `pubspec.yaml`, `pubspec.yml` | Declared only |
 
 **Depth is the column that matters.** A manifest states what a project asked
@@ -106,26 +106,36 @@ the YAML of Yarn 2 and later. Neither records which packages the project itself
 declared, so the sibling `package.json` supplies that; without one every package
 is still reported and only the direct/transitive split is lost.
 
-For npm the engine falls back through three sources, in this order:
+For npm and PHP the engine falls back through three sources, in this order:
 
-1. **A lockfile** — `package-lock.json`, then `yarn.lock`. What *will* be
-   installed, reproducibly.
-2. **`node_modules/` on disk** — what *is* installed. Read only when no lockfile
-   covers the project, which makes a repository that does not commit one
-   scannable in full: a CI job that runs `npm ci` before the scan, or any
-   working copy after an install. Each installed package carries its own
-   manifest with a resolved version, and the directory layout is the resolution.
-3. **`package.json`** — the declared dependencies, at ranges. The last resort,
-   and the only one that leaves the transitive tree unseen.
+1. **A lockfile** — `package-lock.json`, then `yarn.lock`; `composer.lock` for
+   PHP. What *will* be installed, reproducibly.
+2. **The installed tree on disk** — what *is* installed. Read only when no
+   lockfile covers the project, which makes a repository that does not commit
+   one scannable in full: a CI job that runs `npm ci` or `composer install`
+   before the scan, or any working copy after an install. For npm that means
+   `node_modules/`, where each package carries its own manifest and the
+   directory layout is the resolution; for PHP it means
+   `vendor/composer/installed.json`, in which Composer records the whole
+   resolved graph in one file, in either the Composer 1 or the Composer 2 shape.
+3. **The manifest** — `package.json` or `composer.json`, the declared
+   dependencies at ranges. The last resort, and the only one that leaves the
+   transitive tree unseen.
 
 None of the three touches the network. Resolving ranges against a registry would
 answer a different question — what would be installed today — and would put a
 scan that currently runs air-gapped on the far side of the internet.
 
+Composer resolves one version of a package for the whole project, so a
+`composer.lock` gives the full tree with no ambiguity to resolve. What it does
+not record is which packages the project itself asked for; the sibling
+`composer.json` supplies that, and without one every package is still reported
+and only the direct/transitive split is lost. Platform requirements — `php`,
+`ext-json`, `composer-runtime-api` — are not packages and are never reported.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
 ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,
-`composer.lock`, `Cargo.lock`, `go.sum`, Gradle builds, and the .NET ecosystem
-entirely.
+`Cargo.lock`, `go.sum`, Gradle builds, and the .NET ecosystem entirely.
 
 ### What the SCA Engine Reports
 

@@ -565,6 +565,160 @@ func unquoteYarn(s string) string {
 	return strings.Trim(strings.TrimSpace(s), `"'`)
 }
 
+// ============= composer =============
+
+// ComposerLockParser parses PHP's composer.lock.
+//
+// Composer resolves to one version of a package for the whole project — there
+// is no equivalent of a nested node_modules copy — so a package name is on its
+// own a unique key, and an edge resolves by name alone. The constraint the
+// dependent wrote is not consulted: the lockfile has already decided which
+// version satisfies it, and there is only ever the one.
+//
+// Like yarn.lock, composer.lock does not record what the root project asked
+// for: "packages" and "packages-dev" are flat lists in which a declared
+// dependency looks exactly like something six levels down. The sibling
+// composer.json supplies that, and without one every package is still reported
+// with only the direct/transitive split lost.
+type ComposerLockParser struct{}
+
+func (p *ComposerLockParser) Name() string    { return "composer (lockfile)" }
+func (p *ComposerLockParser) Files() []string { return []string{"composer.lock"} }
+func (p *ComposerLockParser) Lockfile()       {}
+
+// composerLock covers the parts of composer.lock this parser reads. Development
+// dependencies live in their own list but are installed into the same flat
+// vendor directory, so both are read into one graph.
+type composerLock struct {
+	Packages    []composerPackage `json:"packages"`
+	PackagesDev []composerPackage `json:"packages-dev"`
+}
+
+// composerPackage is one entry of either list. The same shape appears in
+// vendor/composer/installed.json, which is why both sources share it.
+type composerPackage struct {
+	Name    string            `json:"name"`
+	Version string            `json:"version"`
+	Require map[string]string `json:"require"`
+}
+
+func (p *ComposerLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock composerLock
+	if err := json.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := composerNodes(lock.Packages, lock.PackagesDev)
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+
+	roots := declaredInComposerJSON(filepath.Join(filepath.Dir(path), "composer.json"))
+	return walkGraph(nodes, roots, composerResolver(nodes), "packagist", path), nil
+}
+
+// composerNodes reduces the lists composer writes into the node map the graph
+// walk expects, keyed by package name.
+func composerNodes(lists ...[]composerPackage) map[string]node {
+	nodes := make(map[string]node)
+
+	for _, list := range lists {
+		for _, pkg := range list {
+			if pkg.Name == "" || pkg.Version == "" {
+				continue
+			}
+
+			deps := make(map[string]string, len(pkg.Require))
+			for name, constraint := range pkg.Require {
+				if !isPackagistName(name) {
+					continue
+				}
+				deps[composerKey(name)] = constraint
+			}
+
+			// The version is kept exactly as the lockfile writes it, "v" and
+			// all — that is the string a developer will find when they grep the
+			// file, and OSV normalises the prefix away before matching.
+			nodes[composerKey(pkg.Name)] = node{name: pkg.Name, version: pkg.Version, deps: deps}
+		}
+	}
+
+	return nodes
+}
+
+// composerResolver answers a dependency edge by name, which is all Composer's
+// flat installation leaves to do.
+//
+// An edge that names nothing installed is left unresolved, and the two ways
+// that happens are both harmless here. A virtual package — "psr/http-message-
+// implementation", which guzzlehttp/psr7 provides rather than being — has no
+// entry because no such thing is installed. A replaced package, as when
+// symfony/symfony stands in for symfony/http-kernel, has none for the same
+// reason. Neither loses a package from the report: everything installed is
+// listed regardless, and what is lost at most is one route through the graph.
+func composerResolver(nodes map[string]node) resolver {
+	return func(_, name, _ string) (string, bool) {
+		key := composerKey(name)
+		_, ok := nodes[key]
+		return key, ok
+	}
+}
+
+// declaredInComposerJSON reads what the project requires of itself, as name to
+// constraint. A missing or unreadable composer.json is not an error: the
+// resolved graph is still complete, and only the direct/transitive split is
+// lost.
+func declaredInComposerJSON(path string) map[string]string {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil
+	}
+	var pkg struct {
+		Require    map[string]string `json:"require"`
+		RequireDev map[string]string `json:"require-dev"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil
+	}
+
+	roots := make(map[string]string)
+	for _, m := range []map[string]string{pkg.Require, pkg.RequireDev} {
+		for name, constraint := range m {
+			if !isPackagistName(name) {
+				continue
+			}
+			roots[composerKey(name)] = constraint
+		}
+	}
+	return roots
+}
+
+// isPackagistName separates real packages from Composer's platform packages.
+//
+// A require block mixes the two freely: "php": ">=7.2", "ext-json": "*" and
+// "composer-runtime-api": "^2.0" sit alongside "guzzlehttp/psr7": "^1.6". The
+// platform entries describe the interpreter and its extensions, not code
+// fetched from a registry, and querying an advisory database for a package
+// named "php" or "ext-json" returns nothing while making the dependency count
+// wrong. Every Packagist package is published as vendor/name, and no platform
+// package contains a slash, so the slash is the whole test.
+func isPackagistName(name string) bool {
+	return strings.Contains(name, "/")
+}
+
+// composerKey normalises a package name for lookup. Composer treats names
+// case-insensitively — a require block spelling "Monolog/Monolog" installs the
+// same package as "monolog/monolog" — so an edge written in either case has to
+// find the one node.
+func composerKey(name string) string {
+	return strings.ToLower(name)
+}
+
 // npmNameFromKey recovers a package name from its installation path. Splitting
 // on the last "node_modules/" keeps scoped names intact: the "/" inside
 // "@scope/pkg" is not a path separator here.
