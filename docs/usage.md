@@ -124,7 +124,7 @@ dependency becomes a component with a Package URL (purl), so the output is
 directly consumable by Grype, Trivy, and Dependency-Track.
 
 Supported ecosystems and their purl types: npm, pypi, golang, maven, gem
-(rubygems), composer (packagist), pub.
+(rubygems), composer (packagist), cargo, pub.
 
 ```bash
 drogonsec scan . --format cyclonedx --output sbom.json

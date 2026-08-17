@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -717,6 +718,191 @@ func isPackagistName(name string) bool {
 // find the one node.
 func composerKey(name string) string {
 	return strings.ToLower(name)
+}
+
+// ============= cargo =============
+
+// CargoLockParser parses Rust's Cargo.lock.
+//
+// Cargo.lock is the only lockfile here that records the root project without
+// help: a workspace member or path dependency is written as a package with no
+// "source", because it is not fetched from anywhere, and its dependency list
+// is exactly what the project asked for. No sibling manifest is needed for the
+// direct/transitive split.
+//
+// Two crates of the same name at different versions coexist routinely — a tree
+// holding both time 0.1 and time 0.3 is unremarkable — so a name alone is not a
+// key. Cargo writes a dependency edge as a bare name where that is unambiguous
+// and as "name version" where it is not, and the parser follows the same rule.
+type CargoLockParser struct{}
+
+func (p *CargoLockParser) Name() string    { return "cargo (lockfile)" }
+func (p *CargoLockParser) Files() []string { return []string{"Cargo.lock"} }
+func (p *CargoLockParser) Lockfile()       {}
+
+// cargoLock covers the parts of Cargo.lock this parser reads. The [metadata]
+// table of the older formats holds checksums and nothing else.
+type cargoLock struct {
+	Package []cargoPackage `toml:"package"`
+}
+
+type cargoPackage struct {
+	Name         string   `toml:"name"`
+	Version      string   `toml:"version"`
+	Source       string   `toml:"source"`
+	Dependencies []string `toml:"dependencies"`
+}
+
+func (p *CargoLockParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var lock cargoLock
+	if err := toml.Unmarshal(data, &lock); err != nil {
+		return nil, err
+	}
+
+	nodes := make(map[string]node, len(lock.Package))
+	roots := make(map[string]string)
+
+	for _, pkg := range lock.Package {
+		if pkg.Name == "" || pkg.Version == "" {
+			continue
+		}
+
+		// No source means the crate was not fetched: it is a workspace member
+		// or a path dependency, so it is the project's own code rather than a
+		// dependency of it. What it requires is what the project requires.
+		if pkg.Source == "" {
+			for _, descriptor := range pkg.Dependencies {
+				roots[descriptor] = ""
+			}
+			continue
+		}
+
+		deps := make(map[string]string, len(pkg.Dependencies))
+		for _, descriptor := range pkg.Dependencies {
+			deps[descriptor] = ""
+		}
+		nodes[cargoKey(pkg.Name, pkg.Version)] = node{name: pkg.Name, version: pkg.Version, deps: deps}
+	}
+
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+	return walkGraph(nodes, roots, cargoResolver(nodes), "cargo", path), nil
+}
+
+// cargoResolver answers a dependency edge written in any of the three spellings
+// Cargo has used: "libc", "time 0.1.45", and the older "time 0.1.45
+// (registry+https://github.com/rust-lang/crates.io-index)".
+//
+// Where the edge carries no version, Cargo has guaranteed the name is unique in
+// the tree. If it turns out not to be, the edge is left unresolved rather than
+// guessed at: attaching a route to the wrong copy of a crate would tell a
+// reader to change a dependency that does not lead there.
+func cargoResolver(nodes map[string]node) resolver {
+	byName := make(map[string][]string, len(nodes))
+	for key, n := range nodes {
+		byName[n.name] = append(byName[n.name], key)
+	}
+
+	return func(_, descriptor, _ string) (string, bool) {
+		name, version := splitCargoDescriptor(descriptor)
+		if version != "" {
+			key := cargoKey(name, version)
+			_, ok := nodes[key]
+			return key, ok
+		}
+		if keys := byName[name]; len(keys) == 1 {
+			return keys[0], true
+		}
+		return "", false
+	}
+}
+
+// splitCargoDescriptor takes the name and, where one is written, the version
+// out of a dependency edge. A version can carry build metadata —
+// "0.11.1+wasi-snapshot-preview1" — which holds no space and so survives the
+// split intact.
+func splitCargoDescriptor(descriptor string) (name, version string) {
+	fields := strings.Fields(descriptor)
+	if len(fields) == 0 {
+		return "", ""
+	}
+	if len(fields) > 1 && !strings.HasPrefix(fields[1], "(") {
+		return fields[0], fields[1]
+	}
+	return fields[0], ""
+}
+
+func cargoKey(name, version string) string {
+	return name + " " + version
+}
+
+// CargoTOMLParser parses Rust's Cargo.toml, the last resort for a crate that
+// does not commit its lockfile — normal for a library, since Cargo.lock is
+// ignored for anything consumed as a dependency.
+type CargoTOMLParser struct{}
+
+func (p *CargoTOMLParser) Name() string    { return "cargo" }
+func (p *CargoTOMLParser) Files() []string { return []string{"Cargo.toml"} }
+
+func (p *CargoTOMLParser) Parse(path string) ([]Dependency, error) {
+	data, err := readManifestFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var manifest struct {
+		Dependencies      map[string]any `toml:"dependencies"`
+		DevDependencies   map[string]any `toml:"dev-dependencies"`
+		BuildDependencies map[string]any `toml:"build-dependencies"`
+	}
+	if err := toml.Unmarshal(data, &manifest); err != nil {
+		return nil, err
+	}
+
+	var deps []Dependency
+	for _, table := range []map[string]any{manifest.Dependencies, manifest.DevDependencies, manifest.BuildDependencies} {
+		for _, name := range sortedKeys(table) {
+			version, ok := cargoDeclaredVersion(table[name])
+			if !ok {
+				continue
+			}
+			deps = append(deps, Dependency{
+				Name:      name,
+				Version:   version,
+				Ecosystem: "cargo",
+				File:      path,
+			})
+		}
+	}
+	return deps, nil
+}
+
+// cargoDeclaredVersion reads the version out of a Cargo.toml dependency entry,
+// which is either the range on its own — serde = "1.0" — or a table carrying it
+// alongside features and the rest.
+//
+// An entry with no version of its own is dropped rather than reported at the
+// empty string. A git or path dependency has none, and one inheriting from the
+// workspace — serde = { workspace = true } — keeps it in the root manifest. A
+// dependency reported without a version matches every advisory for that crate
+// or none, depending on the database's mood, and neither answer is worth
+// giving.
+func cargoDeclaredVersion(entry any) (string, bool) {
+	switch v := entry.(type) {
+	case string:
+		return stripVersionPrefix(v), true
+	case map[string]any:
+		if version, ok := v["version"].(string); ok {
+			return stripVersionPrefix(version), true
+		}
+	}
+	return "", false
 }
 
 // npmNameFromKey recovers a package name from its installation path. Splitting
