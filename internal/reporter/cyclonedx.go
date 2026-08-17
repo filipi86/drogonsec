@@ -31,6 +31,7 @@ var purlTypes = map[string]string{
 	"rubygems":  "gem",
 	"packagist": "composer",
 	"pub":       "pub",
+	"cargo":     "cargo",
 }
 
 // purlFor builds a Package URL for a dependency. Name segments separated by "/"

@@ -21,6 +21,7 @@ func TestPurlFor(t *testing.T) {
 		{"packagist", "monolog/monolog", "2.9.1", "pkg:composer/monolog/monolog@2.9.1"},
 		{"maven", "struts2-core", "2.3.34", "pkg:maven/struts2-core@2.3.34"},
 		{"pub", "http", "1.2.0", "pkg:pub/http@1.2.0"},
+		{"cargo", "time", "0.1.45", "pkg:cargo/time@0.1.45"},
 		{"npm", "noversion", "", "pkg:npm/noversion"},
 	}
 	for _, c := range cases {

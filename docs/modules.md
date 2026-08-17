@@ -86,6 +86,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 | **Java** | `pom.xml` | Declared only |
 | **Ruby** | `Gemfile.lock` | Full tree |
 | **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
+| **Rust** | `Cargo.lock`, `Cargo.toml` | Full tree |
 | **Dart** | `pubspec.yaml`, `pubspec.yml` | Declared only |
 
 **Depth is the column that matters.** A manifest states what a project asked
@@ -133,9 +134,18 @@ not record is which packages the project itself asked for; the sibling
 and only the direct/transitive split is lost. Platform requirements — `php`,
 `ext-json`, `composer-runtime-api` — are not packages and are never reported.
 
+Rust has the two ends and no middle: `Cargo.lock`, then `Cargo.toml`. There is
+no installed-tree tier because Cargo keeps no equivalent record of one.
+`Cargo.lock` is the only lockfile that names the root project itself — a
+workspace member or path dependency is written with no `source`, because it was
+never fetched — so the direct dependencies are read from the lockfile alone.
+Two versions of one crate in the same tree are normal in Rust and are reported
+separately, each with its own route: `time 0.1.45` pulled in by `chrono` is a
+different finding from a declared `time 0.3.9`.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
 ecosystem's row above: `pnpm-lock.yaml`, `poetry.lock`, `Pipfile.lock`,
-`Cargo.lock`, `go.sum`, Gradle builds, and the .NET ecosystem entirely.
+`go.sum`, Gradle builds, and the .NET ecosystem entirely.
 
 ### What the SCA Engine Reports
 

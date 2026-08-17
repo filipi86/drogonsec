@@ -1,0 +1,12 @@
+[package]
+name = "drogonsec-fixture"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+chrono = "=0.4.19"
+time = "=0.3.9"
+smallvec = "=1.6.0"
+
+[dev-dependencies]
+tempfile = "=3.2.0"

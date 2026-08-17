@@ -87,12 +87,14 @@ func (e *Engine) registerParsers() {
 		&PackageLockParser{},
 		&YarnLockParser{},
 		&ComposerLockParser{},
+		&CargoLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
 		&RequirementsTXTParser{},
 		&GemfileParser{},
 		&GoModParser{},
 		&ComposerParser{},
+		&CargoTOMLParser{},
 		&PubspecParser{},
 	}
 }
