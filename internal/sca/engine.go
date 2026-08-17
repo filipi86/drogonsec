@@ -115,6 +115,7 @@ func (e *Engine) registerParsers() {
 		&UVLockParser{},
 		&PackageJSONParser{},
 		&PomXMLParser{},
+		&PyProjectParser{},
 		&RequirementsTXTParser{},
 		&GemfileParser{},
 		&GoModParser{},
@@ -295,7 +296,7 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	// stale, and is absent altogether until somebody runs an install.
 	for _, source := range installedSources {
 		for _, dir := range projectDirs(manifestDeps, source.ecosystem) {
-			key := lockKey(filepath.Join(dir, source.manifest), source.ecosystem)
+			key := lockKeyForDir(dir, source.ecosystem)
 			if locked[key] {
 				continue
 			}
@@ -318,23 +319,30 @@ func (e *Engine) collectDependencies() ([]Dependency, error) {
 	return lockfileDeps, nil
 }
 
-// installedSource is a reader for one ecosystem's installed tree: the
-// directory it is rooted at is a project directory, and the findings are
-// attributed to the named manifest rather than to the build product itself.
+// installedSource is a reader for one ecosystem's installed tree, rooted at a
+// project directory. Each reader decides for itself which manifest to attribute
+// its findings to, because the answer is not always one file: Python's could be
+// pyproject.toml, a Pipfile or a requirements.txt.
 type installedSource struct {
 	ecosystem string
-	manifest  string
 	parse     func(projectDir string) ([]Dependency, error)
 }
 
 var installedSources = []installedSource{
-	{ecosystem: "npm", manifest: "package.json", parse: parseInstalledNodeModules},
-	{ecosystem: "packagist", manifest: "composer.json", parse: parseInstalledComposer},
+	{ecosystem: "npm", parse: parseInstalledNodeModules},
+	{ecosystem: "packagist", parse: parseInstalledComposer},
+	{ecosystem: "pypi", parse: parseInstalledPython},
 }
 
 // lockKey identifies an ecosystem within one project directory.
 func lockKey(manifestPath, ecosystem string) string {
-	return filepath.Dir(manifestPath) + "\x00" + ecosystem
+	return lockKeyForDir(filepath.Dir(manifestPath), ecosystem)
+}
+
+// lockKeyForDir is the same identity taken from a directory directly, for
+// callers that have no particular manifest in hand.
+func lockKeyForDir(dir, ecosystem string) string {
+	return dir + "\x00" + ecosystem
 }
 
 // countUniqueFiles returns the number of unique manifest files

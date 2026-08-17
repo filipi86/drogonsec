@@ -81,7 +81,7 @@ The SCA engine scans your project's dependency manifest files for known CVEs, ou
 | Ecosystem | Files | Depth |
 |---|---|---|
 | **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
-| **Python** | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `requirements.txt`, `requirements-dev.txt` | Full tree with a lockfile; declared only otherwise |
+| **Python** | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `.venv/`, `pyproject.toml`, `requirements.txt`, `requirements-dev.txt` | Full tree |
 | **Go** | `go.mod` | Declared, including `// indirect` entries |
 | **Java** | `pom.xml` | Declared only |
 | **Ruby** | `Gemfile.lock` | Full tree |
@@ -134,10 +134,11 @@ the YAML of Yarn 2 and later. Neither records which packages the project itself
 declared, so the sibling `package.json` supplies that; without one every package
 is still reported and only the direct/transitive split is lost.
 
-For npm and PHP the engine falls back through three sources, in this order:
+For npm, PHP and Python the engine falls back through three sources, in this order:
 
 1. **A lockfile** — `package-lock.json`, then `yarn.lock`; `composer.lock` for
-   PHP. What *will* be installed, reproducibly.
+   PHP; `poetry.lock`, `uv.lock` or `Pipfile.lock` for Python. What *will* be
+   installed, reproducibly.
 2. **The installed tree on disk** — what *is* installed. Read only when no
    lockfile covers the project, which makes a repository that does not commit
    one scannable in full: a CI job that runs `npm ci` or `composer install`
@@ -145,10 +146,11 @@ For npm and PHP the engine falls back through three sources, in this order:
    `node_modules/`, where each package carries its own manifest and the
    directory layout is the resolution; for PHP it means
    `vendor/composer/installed.json`, in which Composer records the whole
-   resolved graph in one file, in either the Composer 1 or the Composer 2 shape.
-3. **The manifest** — `package.json` or `composer.json`, the declared
-   dependencies at ranges. The last resort, and the only one that leaves the
-   transitive tree unseen.
+   resolved graph in one file, in either the Composer 1 or the Composer 2 shape;
+   for Python it means the project's virtualenv.
+3. **The manifest** — `package.json`, `composer.json`, `pyproject.toml` or
+   `requirements.txt`, the declared dependencies at ranges. The last resort,
+   and the only one that leaves the transitive tree unseen.
 
 None of the three touches the network. Resolving ranges against a registry would
 answer a different question — what would be installed today — and would put a
@@ -190,11 +192,19 @@ set comes from also differs: `uv.lock` names the project itself, the way
 `Cargo.lock` does, while `poetry.lock` needs `pyproject.toml` and
 `Pipfile.lock` needs the `Pipfile`.
 
+Python's installed tier is the virtualenv: `.venv/` or `venv/`, where every
+installed distribution carries a `*.dist-info/METADATA` naming itself, its
+version and its `Requires-Dist`. Together those are the whole graph, so this
+tier gives routes where `Pipfile.lock` cannot. A requirement gated behind an
+extra — `argon2-cffi ; extra == 'argon2'` — is not an edge, because it is not
+installed unless the extra was asked for. What the virtualenv brought in itself,
+`pip` and `setuptools`, is reported with no route: installed code that can carry
+advisories, reachable from nothing the project declared. Only a project-local
+virtualenv is read; a shared or system environment answers a different question.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
 ecosystem's row above: `pnpm-lock.yaml`, `go.sum`, Gradle builds, and the .NET
-ecosystem entirely. Python also has no installed-tree tier yet: a virtualenv's
-`*.dist-info/METADATA` files are not read, so a project with a virtualenv but
-no lockfile and no `requirements.txt` is scanned as if it had no dependencies.
+ecosystem entirely.
 
 ### What the SCA Engine Reports
 
