@@ -106,6 +106,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **`golang.org/x/crypto` moves to v0.56.0.** Two advisories in
+  `golang.org/x/crypto/ssh` — `GO-2026-6354` and `GO-2026-6355`, both denial of
+  service on a deadlocked channel — are reachable from `monitor.shallowClone`,
+  which calls `git.PlainClone` and through it `ssh.NewClientConn`. Both are
+  fixed in v0.56.0. As with the Go 1.26.6 bump below, `govulncheck` had started
+  failing the build on `main` as the advisories were published, without any
+  change to the source. The dependency is indirect, via go-git, so only the
+  version pin moves; `golang.org/x/text` follows to v0.41.0 as a transitive
+  requirement.
+
 - **The build moves to Go 1.26.6**, in CI, in the Docker image and as the floor
   in `go.mod`. Five advisories in the standard library — `net/http`,
   `crypto/tls`, `net/url` and `encoding/asn1` — are reachable from the monitor's
