@@ -16,10 +16,10 @@ import (
 
 // ============= CYCLONEDX SBOM REPORTER =============
 // Emits a CycloneDX 1.5 JSON Software Bill of Materials of the dependencies
-// discovered by the SCA engine. This is a flat component inventory (one
-// component per discovered dependency); it does not yet express the transitive
-// dependency graph, because the SCA engine resolves manifests rather than full
-// lockfiles. The output is consumable by Grype, Trivy, and Dependency-Track.
+// discovered by the SCA engine: one component per dependency, and the
+// dependencies graph wherever the engine read one from a lockfile, an
+// installed tree or a package cache. The output is consumable by Grype, Trivy,
+// and Dependency-Track.
 
 // purlTypes maps the SCA engine's ecosystem names to Package URL (purl) types.
 // See https://github.com/package-url/purl-spec for the canonical type list.
@@ -42,6 +42,11 @@ func purlFor(ecosystem, name, version string) string {
 	t := purlTypes[strings.ToLower(ecosystem)]
 	if t == "" {
 		t = strings.ToLower(ecosystem)
+	}
+	// A Maven artifact is named groupId:artifactId, which the purl spec
+	// writes as namespace and name: pkg:maven/org.apache.logging.log4j/log4j-core.
+	if t == "maven" {
+		name = strings.Replace(name, ":", "/", 1)
 	}
 	p := "pkg:" + t + "/" + encodePurlPath(name)
 	if version != "" {

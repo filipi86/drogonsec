@@ -7,7 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-28
+
+Full-depth release for the SCA engine. It read manifests — a handful of
+names at version ranges — and so missed nearly all of the code a project
+ships. Every supported ecosystem is now read in full: from the lockfile, or the
+installed tree when none is committed, for npm, Yarn, Python, PHP and Rust (a
+new ecosystem); from the package manager's own cache for Go and Dart; and for
+Java by resolving Maven's dependency tree offline, the way Maven does. Each
+finding says how the vulnerable package got there, and the SBOM carries the
+graph. Every finding also gains a stable fingerprint, so it keeps its identity
+from one scan to the next.
+
 ### Added
+
+- **Java is resolved in full: Maven's dependency tree is computed offline.**
+  Maven has no lockfile — what it resolves is decided by the project's POM
+  together with the POM of every artifact reached from it, which Maven keeps in
+  the local repository (`~/.m2/repository`) once the project has been built.
+  The engine now performs that resolution by Maven's own rules: parent POMs and
+  their properties, BOMs imported into `<dependencyManagement>`, nearest-wins
+  mediation, the root's managed versions overriding transitive ones,
+  non-transitive test/provided/optional scopes, exclusions, relocations and
+  version ranges. It was checked against `mvn dependency:tree` artifact for
+  artifact, version for version and parent for parent — on the committed
+  multi-module fixture, on a Spring Boot 2.5 application (102 artifacts) and on
+  a Hadoop 3.3 / AWS SDK / netty one (130). Sibling modules of a multi-module
+  build are read from the repository and reported as the route, not as
+  dependencies: `Required : via com.example.drogonsec:fixture-core`. Where a POM
+  is missing from the local repository the artifact is still reported and the
+  scan says how many it could not see.
+- **`gradle.lockfile` is read**, with edges from the POMs in Gradle's cache and
+  the direct set from the coordinates in `build.gradle` or `build.gradle.kts`.
+- **Dart is scanned in full from `pubspec.lock`.** Only `pubspec.yaml` was read,
+  so a Dart project was its declared packages at ranges; on the committed
+  fixture, 3 packages were visible out of 12. The lockfile also marks which
+  packages the project declared, and the edges come from each package's
+  `pubspec.yaml` in the pub cache, found through `.dart_tool/package_config.json`.
+- **Go findings carry routes.** A `go.mod` from Go 1.17 on already lists every
+  module in the build; what it lacks is edges, which now come from the module
+  cache, where the toolchain keeps each module's `go.mod`. On the committed
+  fixture every edge matches `go mod graph`. `replace` directives are applied, so
+  a replaced module is scanned as the module that is actually built.
+- **Rust is a new ecosystem: `Cargo.lock` and `Cargo.toml` are read.** A
+  `Cargo.lock` in the tree was walked past, so no crate was ever checked. Two
+  versions of one crate are normal in Rust, so each is reported with its own
+  route and matched against its own advisories — on the committed fixture,
+  `time` 0.1.45 (via `chrono`) and `time` 0.3.9 separately. Workspace members
+  and path dependencies are recognised as the project's own code and not
+  reported. `Cargo.toml` is the fallback for a library that does not commit its
+  lockfile. ([#62](https://github.com/filipi86/drogonsec/pull/62))
+- **PHP is scanned in full from `composer.lock`, or from
+  `vendor/composer/installed.json`** when no lockfile is committed — the normal
+  shape for a PHP library. On the committed fixture, three declared packages
+  meant 3 packages seen out of 20 installed; both sources now give the same 18
+  findings where `composer.json` gave 14. Platform requirements (`php`,
+  `ext-*`, `composer-runtime-api`) are dropped everywhere, including from
+  `composer.json`. ([#61](https://github.com/filipi86/drogonsec/pull/61))
+- **Python is scanned in full**: `poetry.lock`, `uv.lock` and `Pipfile.lock`,
+  an installed virtualenv (`.venv/`, read from each `*.dist-info/METADATA`),
+  and `pyproject.toml`, which was not parsed at all before. Names are compared
+  in PEP 503 normal form, so `jinja2`'s requirement on `MarkupSafe` resolves to
+  the `markupsafe` it installs and the route is not lost.
+  ([#64](https://github.com/filipi86/drogonsec/pull/64))
+- **The CycloneDX SBOM carries the `dependencies` graph**, built from every
+  edge rather than one route per component, so a consumer can work out every
+  way a vulnerable package got in. A leaf is listed with an empty `dependsOn`,
+  which in CycloneDX asserts it has no dependencies, and edges to components
+  outside the list are dropped rather than left to invalidate the BOM.
+  ([#65](https://github.com/filipi86/drogonsec/pull/65))
+- **Every finding has a stable `fingerprint`** — SAST, SCA and leaks — in the
+  JSON output and as `partialFingerprints` in SARIF. It is built from what the
+  finding is, never from where it sits: the line number is not an input, the
+  matched content and the path relative to the scan target are. A finding
+  keeps its identity when unrelated lines move, and a repository scanned
+  locally and in CI produces the same set. Leak fingerprints include the commit,
+  so a secret in history and the same secret in the working tree stay distinct;
+  SCA fingerprints key on the CVE, so the same flaw under another GHSA is not
+  read as new. The scheme is versioned (`v1`) so a future change to it cannot
+  be silent. ([#65](https://github.com/filipi86/drogonsec/pull/65))
 
 - **`node_modules/` is read when a project commits no lockfile.** Such a
   repository was scanned from `package.json` alone — its declared dependencies,
@@ -48,30 +126,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   replaces the guess with the resolved version, which removes false positives
   and false negatives at the same time.
 
-### Fixed
-
-- **The same vulnerability could be reported twice.** OSV holds some flaws under
-  several identifiers that alias one another — `path-to-regexp` 0.1.7 comes back
-  as both `GHSA-37ch-88jc-xwx2` and `GHSA-9wv6-86v2-598j`, each listing the
-  other, both resolving to `CVE-2024-45296`. Findings are now collapsed by
-  package, version, manifest and CVE, falling back to the advisory identifier
-  for advisories that never received a CVE.
-- **The documented SCA support was aspirational.** `docs/modules.md` listed
-  `yarn.lock`, `Pipfile.lock`, `pyproject.toml`, `go.sum`, Gradle builds,
-  `composer.lock`, `Cargo.lock` and the whole .NET ecosystem as supported. None
-  of them were parsed. The table now states what the engine reads, how deep it
-  goes for each ecosystem, and what is not covered.
-
-### Added
-
 - **Leak findings now carry the column of the secret**, in the JSON output and
   in the SARIF region. Only SAST findings had one, so a reader of a leak had no
   way to tell where on the line the credential sat and could only mark the line
   as a whole — GitHub Code Scanning highlighted from column 1, and an editor
   would underline the variable name along with everything else.
 
+### Changed
+
+- **A manifest version range is no longer matched against advisories.**
+  `lodash: "^4.17.15"` installs 4.17.21, where two of the four advisories the
+  scanner used to report against 4.17.15 are fixed; reporting them named a
+  version the project never installed. Only a requirement naming a single
+  release is checked — by each ecosystem's own rule, so `1.2.3` pins in npm,
+  Composer, pip and pub while Cargo needs `=1.2.3`. The skipped packages stay in
+  the inventory and the SBOM, and the scan says how many it skipped. **Expect
+  fewer SCA findings on projects scanned from manifests alone**; committing a
+  lockfile restores them, at the versions actually installed, together with the
+  transitive tree. ([#64](https://github.com/filipi86/drogonsec/pull/64))
+
 ### Fixed
 
+- **Maven dependencies were never matched against an advisory.** The `pom.xml`
+  parser named a dependency by its `artifactId` alone — `log4j-core` — where OSV
+  names Maven packages `groupId:artifactId`, `org.apache.logging.log4j:log4j-core`.
+  It also read the first `<artifactId>` and `<version>` in the file as a
+  dependency, which is the project's own coordinates or its parent's. Maven
+  packages are now named as OSV names them, the CycloneDX purl carries the group
+  as its namespace (`pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1`), and
+  a version taken from a property or a parent is resolved rather than skipped.
+- **Go versions are sent to OSV without the leading `v`.** Go writes `v1.7.0`;
+  OSV records Go versions as plain SemVer, `1.7.0`. The report keeps the `go.mod`
+  spelling, and the suggested fix is written the same way.
+- **Every module in `go.mod` was reported as direct**, including the ones
+  `go mod tidy` itself marks `// indirect`.
+- **POMs declaring ISO-8859-1** — common in older artifacts, junit 4 and
+  hamcrest among them — were rejected by the XML decoder.
+- **The documented SCA support was aspirational.** `docs/modules.md` listed
+  lockfiles and ecosystems as supported that were never parsed. This release
+  implements most of them; the table in the README and `docs/modules.md` now
+  states what the engine reads, how deep it goes for each ecosystem, and what
+  is still not covered — `pnpm-lock.yaml`, Gradle builds without dependency
+  locking, and .NET.
 - **Columns are counted in characters rather than bytes.** A line with accented
   text ahead of the match reported a column past where the match really starts,
   because a multi-byte character counted once per byte. SARIF measures columns
@@ -85,24 +181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own GitHub Security tab with 30 alerts for the fake credentials that exist to
   exercise the detectors. Leaks are now held to the same floor, in the working
   tree and in `--git-history`.
-
-### Changed
-
-- **Secrets on `.gitignore`d files are demoted to LOW rather than INFO.** The
-  demotion exists so a local `.env` stops inflating the CRITICAL count while
-  staying visible — a copy committed earlier in history is still a real
-  exposure ([#17](https://github.com/filipi86/drogonsec/issues/17)). INFO sits
-  below the default `--severity LOW` floor, so once leaks respect that floor an
-  INFO finding would have vanished from the default scan instead. LOW keeps the
-  finding where the issue intended it.
-- **The banner, progress bars, scan summary and warnings now go to stderr**,
-  leaving stdout for what the caller asked for: the findings report, the shell
-  completion script, the `version` and `rules list` output. `drogonsec scan .
-  --format json > report.json` previously wrote 58 lines of ASCII banner into
-  the file ahead of the JSON, so the result parsed as nothing at all; the same
-  applied to `sarif` and `cyclonedx`, and to any pipe. Nothing is hidden by
-  this — stderr goes to the terminal, so an interactive run looks exactly as it
-  did.
 
 ### Security
 
@@ -294,7 +372,8 @@ binary, built for developers and CI/CD pipelines.
 - **CI/CD**: GitHub Actions pipeline with build, test, lint, govulncheck, and a
   self-scan security gate.
 
-[Unreleased]: https://github.com/filipi86/drogonsec/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/filipi86/drogonsec/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/filipi86/drogonsec/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/filipi86/drogonsec/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/filipi86/drogonsec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/filipi86/drogonsec/releases/tag/v0.1.0

@@ -274,7 +274,7 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 			continue
 		}
 		queries = append(queries, osvQuery{
-			Version: dep.Version,
+			Version: osvVersion(dep),
 			Package: osvPackage{Name: dep.Name, Ecosystem: eco},
 		})
 		queried = append(queried, dep)
@@ -340,6 +340,19 @@ func (c *osvClient) queryBatch(deps []Dependency) ([]Finding, error) {
 	return findings, nil
 }
 
+// osvVersion is the version to put in an OSV query for a dependency.
+//
+// Go writes module versions with a leading "v" — go.mod, go.sum and the module
+// proxy all say v1.7.0 — while OSV records them without one, as plain SemVer.
+// The query drops the prefix so the two match; the dependency keeps it, since
+// that is the string a developer will find in their go.mod.
+func osvVersion(dep Dependency) string {
+	if strings.ToLower(dep.Ecosystem) == "go" {
+		return strings.TrimPrefix(dep.Version, "v")
+	}
+	return dep.Version
+}
+
 // osvVulnToFinding converts an OSV vulnerability to our Finding type
 func osvVulnToFinding(v osvVuln, dep Dependency) Finding {
 	// Extract CVE alias (prefer CVE- prefix)
@@ -353,6 +366,11 @@ func osvVulnToFinding(v osvVuln, dep Dependency) Finding {
 
 	// Extract fixed version from ranges
 	fixedVersion := extractFixedVersion(v.Affected, dep.Version)
+	if strings.ToLower(dep.Ecosystem) == "go" && fixedVersion != "" && !strings.HasPrefix(fixedVersion, "v") {
+		// Shown beside the installed version, the fix has to be written the
+		// way go.mod and `go get` write it.
+		fixedVersion = "v" + fixedVersion
+	}
 
 	// Determine severity from CVSS score
 	severity, cvss := parseCVSS(v.Severity)

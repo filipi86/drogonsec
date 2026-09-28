@@ -1,0 +1,10 @@
+name: example_app
+description: Fixture for the DrogonSec pubspec.lock parser.
+publish_to: none
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  dio: 4.0.6
+  http: ^0.13.5
+dev_dependencies:
+  lints: ^2.0.0

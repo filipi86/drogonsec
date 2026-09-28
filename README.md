@@ -18,6 +18,30 @@
 
 ---
 
+## What's New in v0.4.0
+
+**Full-depth SCA.** The dependency engine now reads the tree that actually
+ships — every transitive package, at the version installed — for all eight
+supported ecosystems, instead of the handful a manifest declares.
+
+- **Every ecosystem in full:** lockfiles and installed trees for npm, Yarn,
+  Python, PHP, Rust (new) and Ruby; the package manager's own cache for Go and
+  Dart; and **Maven resolved offline** by Maven's own rules, matching
+  `mvn dependency:tree` artifact for artifact. `gradle.lockfile` is read too.
+- **Dependency paths:** every SCA finding says how the package got there —
+  `Required : via com.example:core` — so the fix lands on the dependency a
+  developer can actually change.
+- **SBOM dependency graph:** the CycloneDX export carries every edge, for Grype,
+  Trivy and Dependency-Track.
+- **Stable fingerprints:** every finding keeps its identity across scans and
+  code moves, in JSON and as SARIF `partialFingerprints`.
+- **Fixed:** Maven dependencies were never matched against an advisory, and
+  manifest version ranges no longer produce false positives.
+
+Full details in the [CHANGELOG](CHANGELOG.md#040---2026-09-28).
+
+---
+
 ## Documentation
 
 📖 **Full Documentation:** -->  [Drogonsec Doc](https://cross-intel.com/opensource/drogonsec)
@@ -57,14 +81,21 @@ nearly all the advisories are. So the column that matters is **depth**:
 | **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
 | **Rust** | `Cargo.lock`, `Cargo.toml` | Full tree |
 | **Ruby** | `Gemfile.lock` | Full tree |
-| **Go** | `go.mod` | Declared, including `// indirect` |
-| **Java** | `pom.xml` | Declared only |
-| **Dart** | `pubspec.yaml` | Declared only |
+| **Go** | `go.mod`, routes from the module cache | Full set |
+| **Java** | `pom.xml` resolved offline against `~/.m2`, `gradle.lockfile` | Full tree |
+| **Dart** | `pubspec.lock`, `pubspec.yaml` | Full tree |
 
 For npm, Python and PHP the engine falls back through three sources — the
 lockfile, then the installed tree on disk (`node_modules/`, a virtualenv,
 `vendor/`), then the manifest. A repository that does not commit a lockfile is
 still scanned in full after an install.
+
+For Go, Dart and Java the edges come from the package manager's own cache — the
+module cache, the pub cache, the Maven local repository — which already holds
+every dependency's manifest once the project has been built. Maven, which has no
+lockfile, is resolved offline by Maven's own rules (parent POMs, imported BOMs,
+nearest-wins, dependency management, exclusions) and matches
+`mvn dependency:tree` artifact for artifact.
 
 Every finding carries whether the package is **direct** and, where the source
 records it, the route that introduced it:
@@ -169,7 +200,7 @@ Drogonsec Security Scanner
 ### JSON
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "stats": { "total_findings": 5, "critical": 1, "high": 3 },
   "sast_findings": [ ... ],
   "sca_findings": [ ... ],
