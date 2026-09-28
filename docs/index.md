@@ -67,7 +67,7 @@ supported ecosystems, instead of the handful a manifest declares.
 - **Fixed:** Maven dependencies were never matched against an advisory, and
   manifest version ranges no longer produce false positives.
 
-Full details in the [SCA engine documentation](modules.md#sca-engine--software-composition-analysis) and in the [CHANGELOG](https://github.com/filipi86/drogonsec/blob/main/CHANGELOG.md#040---2026-09-28).
+The [v0.4.0 release page](releases/v0.4.0.md) has the full announcement. Full details in the [SCA engine documentation](modules.md#sca-engine--software-composition-analysis) and in the [CHANGELOG](https://github.com/filipi86/drogonsec/blob/main/CHANGELOG.md#040---2026-09-28).
 
 ---
 
@@ -133,6 +133,7 @@ drogonsec/
 | [CI/CD Pipelines](ci-cd.md) | Pipelines, security gates, Dependabot, multi-environment branding |
 | [Security](security.md) | XSS prevention, HTTPS enforcement, ReDoS protection, supply chain |
 | [FAQ](faq.md) | Troubleshooting and common questions |
+| [What's New in v0.4.0](releases/v0.4.0.md) | Release highlights — full-depth SCA for every ecosystem |
 
 ---
 
