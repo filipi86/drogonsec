@@ -18,6 +18,30 @@
 
 ---
 
+## What's New in v0.4.0
+
+**Full-depth SCA.** The dependency engine now reads the tree that actually
+ships — every transitive package, at the version installed — for all eight
+supported ecosystems, instead of the handful a manifest declares.
+
+- **Every ecosystem in full:** lockfiles and installed trees for npm, Yarn,
+  Python, PHP, Rust (new) and Ruby; the package manager's own cache for Go and
+  Dart; and **Maven resolved offline** by Maven's own rules, matching
+  `mvn dependency:tree` artifact for artifact. `gradle.lockfile` is read too.
+- **Dependency paths:** every SCA finding says how the package got there —
+  `Required : via com.example:core` — so the fix lands on the dependency a
+  developer can actually change.
+- **SBOM dependency graph:** the CycloneDX export carries every edge, for Grype,
+  Trivy and Dependency-Track.
+- **Stable fingerprints:** every finding keeps its identity across scans and
+  code moves, in JSON and as SARIF `partialFingerprints`.
+- **Fixed:** Maven dependencies were never matched against an advisory, and
+  manifest version ranges no longer produce false positives.
+
+Full details in the [CHANGELOG](CHANGELOG.md#040---2026-09-28).
+
+---
+
 ## Documentation
 
 📖 **Full Documentation:** -->  [Drogonsec Doc](https://cross-intel.com/opensource/drogonsec)

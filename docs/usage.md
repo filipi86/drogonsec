@@ -186,11 +186,14 @@ out for itself all the ways a vulnerable package is reachable. That is
 deliberately more than the `dependency_path` on a finding, which shows only the
 shortest route — the hop a developer can actually change.
 
-> **Scope:** where a lockfile or an installed tree is available, the inventory
-> covers the full transitive set — for npm, Python, PHP, Rust and Ruby that is
-> every package that will be installed, not only the declared ones. An ecosystem
-> read from a manifest alone contributes its components without edges, because a
-> manifest records none. SPDX output is planned for a later release. The SBOM is
+> **Scope:** the inventory covers the full transitive set for every supported
+> ecosystem — every package that will be installed, not only the declared ones.
+> Edges come from the lockfile or installed tree for npm, Python, PHP and Rust,
+> and from the package manager's cache for Go, Dart and Java (the module cache,
+> the pub cache, the Maven local repository or Gradle's cache). Where no
+> lockfile, installed tree or cache is available, an ecosystem read from its
+> manifest alone contributes its components without edges, because a manifest
+> records none. SPDX output is planned for a later release. The SBOM is
 > derived from the SCA engine, so do not combine it with `--no-sca`.
 
 ---
@@ -493,7 +496,9 @@ Notes for anyone parsing this output:
   itself, and `dependency_path` is the chain that introduced it otherwise
   (`["express", "qs"]` means express requires qs which requires this package).
   A transitive finding with an empty path is one whose route could not be
-  established — usually an ecosystem scanned without its lockfile.
+  established — usually an ecosystem scanned without its lockfile, or, for Go,
+  Dart and Java, on a machine whose package cache does not hold the
+  dependencies' manifests.
 - Findings arrive ordered by severity, CRITICAL first.
 
 ---
