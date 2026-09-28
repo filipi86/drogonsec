@@ -11,14 +11,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Full-depth release for the SCA engine. It read manifests — a handful of
 names at version ranges — and so missed nearly all of the code a project
-ships. It now reads the lockfile, or the installed tree when none is
-committed, for npm, Yarn, Python, PHP and Rust (a new ecosystem), says how each
-vulnerable package got there, and exports that graph in the SBOM. Every
-finding also gains a stable fingerprint, so it keeps its identity from one scan
-to the next.
+ships. Every supported ecosystem is now read in full: from the lockfile, or the
+installed tree when none is committed, for npm, Yarn, Python, PHP and Rust (a
+new ecosystem); from the package manager's own cache for Go and Dart; and for
+Java by resolving Maven's dependency tree offline, the way Maven does. Each
+finding says how the vulnerable package got there, and the SBOM carries the
+graph. Every finding also gains a stable fingerprint, so it keeps its identity
+from one scan to the next.
 
 ### Added
 
+- **Java is resolved in full: Maven's dependency tree is computed offline.**
+  Maven has no lockfile — what it resolves is decided by the project's POM
+  together with the POM of every artifact reached from it, which Maven keeps in
+  the local repository (`~/.m2/repository`) once the project has been built.
+  The engine now performs that resolution by Maven's own rules: parent POMs and
+  their properties, BOMs imported into `<dependencyManagement>`, nearest-wins
+  mediation, the root's managed versions overriding transitive ones,
+  non-transitive test/provided/optional scopes, exclusions, relocations and
+  version ranges. It was checked against `mvn dependency:tree` artifact for
+  artifact, version for version and parent for parent — on the committed
+  multi-module fixture, on a Spring Boot 2.5 application (102 artifacts) and on
+  a Hadoop 3.3 / AWS SDK / netty one (130). Sibling modules of a multi-module
+  build are read from the repository and reported as the route, not as
+  dependencies: `Required : via com.example.drogonsec:fixture-core`. Where a POM
+  is missing from the local repository the artifact is still reported and the
+  scan says how many it could not see.
+- **`gradle.lockfile` is read**, with edges from the POMs in Gradle's cache and
+  the direct set from the coordinates in `build.gradle` or `build.gradle.kts`.
+- **Dart is scanned in full from `pubspec.lock`.** Only `pubspec.yaml` was read,
+  so a Dart project was its declared packages at ranges; on the committed
+  fixture, 3 packages were visible out of 12. The lockfile also marks which
+  packages the project declared, and the edges come from each package's
+  `pubspec.yaml` in the pub cache, found through `.dart_tool/package_config.json`.
+- **Go findings carry routes.** A `go.mod` from Go 1.17 on already lists every
+  module in the build; what it lacks is edges, which now come from the module
+  cache, where the toolchain keeps each module's `go.mod`. On the committed
+  fixture every edge matches `go mod graph`. `replace` directives are applied, so
+  a replaced module is scanned as the module that is actually built.
 - **Rust is a new ecosystem: `Cargo.lock` and `Cargo.toml` are read.** A
   `Cargo.lock` in the tree was walked past, so no crate was ever checked. Two
   versions of one crate are normal in Rust, so each is reported with its own
@@ -117,11 +147,27 @@ to the next.
 
 ### Fixed
 
+- **Maven dependencies were never matched against an advisory.** The `pom.xml`
+  parser named a dependency by its `artifactId` alone — `log4j-core` — where OSV
+  names Maven packages `groupId:artifactId`, `org.apache.logging.log4j:log4j-core`.
+  It also read the first `<artifactId>` and `<version>` in the file as a
+  dependency, which is the project's own coordinates or its parent's. Maven
+  packages are now named as OSV names them, the CycloneDX purl carries the group
+  as its namespace (`pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1`), and
+  a version taken from a property or a parent is resolved rather than skipped.
+- **Go versions are sent to OSV without the leading `v`.** Go writes `v1.7.0`;
+  OSV records Go versions as plain SemVer, `1.7.0`. The report keeps the `go.mod`
+  spelling, and the suggested fix is written the same way.
+- **Every module in `go.mod` was reported as direct**, including the ones
+  `go mod tidy` itself marks `// indirect`.
+- **POMs declaring ISO-8859-1** — common in older artifacts, junit 4 and
+  hamcrest among them — were rejected by the XML decoder.
 - **The documented SCA support was aspirational.** `docs/modules.md` listed
   lockfiles and ecosystems as supported that were never parsed. This release
   implements most of them; the table in the README and `docs/modules.md` now
   states what the engine reads, how deep it goes for each ecosystem, and what
-  is still not covered — `go.sum`, Gradle builds and .NET.
+  is still not covered — `pnpm-lock.yaml`, Gradle builds without dependency
+  locking, and .NET.
 - **Columns are counted in characters rather than bytes.** A line with accented
   text ahead of the match reported a column past where the match really starts,
   because a multi-byte character counted once per byte. SARIF measures columns

@@ -57,14 +57,21 @@ nearly all the advisories are. So the column that matters is **depth**:
 | **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
 | **Rust** | `Cargo.lock`, `Cargo.toml` | Full tree |
 | **Ruby** | `Gemfile.lock` | Full tree |
-| **Go** | `go.mod` | Declared, including `// indirect` |
-| **Java** | `pom.xml` | Declared only |
-| **Dart** | `pubspec.yaml` | Declared only |
+| **Go** | `go.mod`, routes from the module cache | Full set |
+| **Java** | `pom.xml` resolved offline against `~/.m2`, `gradle.lockfile` | Full tree |
+| **Dart** | `pubspec.lock`, `pubspec.yaml` | Full tree |
 
 For npm, Python and PHP the engine falls back through three sources — the
 lockfile, then the installed tree on disk (`node_modules/`, a virtualenv,
 `vendor/`), then the manifest. A repository that does not commit a lockfile is
 still scanned in full after an install.
+
+For Go, Dart and Java the edges come from the package manager's own cache — the
+module cache, the pub cache, the Maven local repository — which already holds
+every dependency's manifest once the project has been built. Maven, which has no
+lockfile, is resolved offline by Maven's own rules (parent POMs, imported BOMs,
+nearest-wins, dependency management, exclusions) and matches
+`mvn dependency:tree` artifact for artifact.
 
 Every finding carries whether the package is **direct** and, where the source
 records it, the route that introduced it:

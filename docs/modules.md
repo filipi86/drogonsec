@@ -92,12 +92,12 @@ they do not.
 |---|---|---|
 | **Node.js** | `package-lock.json`, `yarn.lock`, `node_modules/`, `package.json` | Full tree |
 | **Python** | `poetry.lock`, `uv.lock`, `Pipfile.lock`, `.venv/`, `pyproject.toml`, `requirements.txt`, `requirements-dev.txt` | Full tree |
-| **Go** | `go.mod` | Declared, including `// indirect` entries |
-| **Java** | `pom.xml` | Declared only |
+| **Go** | `go.mod` (Go 1.17+), routes from the module cache | Full set |
+| **Java** | `pom.xml` resolved against `~/.m2/repository`, `gradle.lockfile` | Full tree |
 | **Ruby** | `Gemfile.lock` | Full tree |
 | **PHP** | `composer.lock`, `vendor/composer/installed.json`, `composer.json` | Full tree |
 | **Rust** | `Cargo.lock`, `Cargo.toml` | Full tree |
-| **Dart** | `pubspec.yaml`, `pubspec.yml` | Declared only |
+| **Dart** | `pubspec.lock`, `pubspec.yaml`, `pubspec.yml` | Full tree |
 
 **Depth is the column that matters.** A manifest states what a project asked
 for: a handful of names, at version *ranges*. A lockfile states what was
@@ -212,9 +212,77 @@ installed unless the extra was asked for. What the virtualenv brought in itself,
 advisories, reachable from nothing the project declared. Only a project-local
 virtualenv is read; a shared or system environment answers a different question.
 
+Go, Dart and Java record the resolved set in one place and the edges in
+another: the edges live in each dependency's own manifest, which the package
+manager has already downloaded into its cache by the time the project builds.
+The engine reads those caches where they exist, and only ever the entry for the
+exact version selected — an immutable file, checked against the project's
+checksums by the package manager itself — so reading one is reading the inputs
+the resolution was made from, not one machine's passing state. Without the
+cache every package is still reported and the direct ones are still marked;
+only the routes are lost.
+
+**Go.** A `go.mod` declaring `go 1.17` or later lists every module that
+provides a package to the build, each at the version minimal version selection
+chose, with `// indirect` marking the ones the project does not import itself
+— the full set, in the file. The edges come from the module cache
+(`$GOMODCACHE`, else `$GOPATH/pkg/mod`, else `~/go/pkg/mod`), where the
+toolchain keeps every module's `go.mod` as `cache/download/<module>/@v/<version>.mod`.
+A module the cache mentions but `go.mod` does not is left out, because graph
+pruning left it out of the build. `replace` directives are applied: a
+replacement by another module is scanned as that module, and a replacement by a
+directory is the project's own code. A `go.mod` older than 1.17 lists only what
+it happens to record; `go mod tidy -go=1.17` brings it up to date. `go.sum` is
+not read — it holds checksums for more versions than are selected.
+
+**Dart.** `pubspec.lock` holds every package in the solve at its selected
+version and, unlike most lockfiles, says which ones the project declared
+(`direct main`, `direct dev`). The edges come from each package's `pubspec.yaml`,
+found through `.dart_tool/package_config.json`, else in the pub cache
+(`$PUB_CACHE`, else `~/.pub-cache`). Only hosted packages are reported: `sdk`
+packages are Flutter itself, `git` ones are pinned to a commit rather than a
+release, and `path` ones are the project's own code — though what a path
+package requires, the project requires.
+
+**Java — Maven.** Maven has no lockfile. What it resolves is decided by the
+project's POM together with the POM of every artifact reached from it, and
+Maven keeps all of those in the local repository once it has resolved the
+project — after any build, test run or `mvn dependency:resolve`. The engine
+performs that resolution offline, by Maven's rules, and was checked artifact
+for artifact against `mvn dependency:tree`, including a Spring Boot application
+and a Hadoop one:
+
+- parents are inherited — properties, dependencies and managed versions, the
+  child winning — before anything is interpolated;
+- BOMs imported into `<dependencyManagement>` add the versions the POM does not
+  already manage;
+- the nearest declaration of an artifact wins, the first one at equal depth;
+- the root project's `<dependencyManagement>` overrides the version of every
+  transitive dependency, which is how a Maven project patches a library it
+  never named;
+- test, provided and optional dependencies of a dependency are not transitive,
+  exclusions apply to the whole subtree, relocations are followed, and a
+  version range is answered from the versions in the local repository.
+
+Modules of a multi-module build are read from the repository and not reported:
+they are the project's own code, and appear on the route of what they pull in —
+`Required : via com.example:core`. The local repository is found where Maven
+looks for it: `-Dmaven.repo.local` in `MAVEN_OPTS`, then `<localRepository>` in
+`~/.m2/settings.xml`, then `~/.m2/repository`. Where a POM is not there, the
+artifact is still reported at the version its declarer asked for, and the scan
+says how many POMs it could not find. Profiles activated by the JDK, the
+operating system or a file depend on the build machine and are not applied.
+
+**Java — Gradle.** `gradle.lockfile`, written by Gradle's dependency locking,
+holds every module at its locked version. The edges come from the POMs in
+Gradle's cache (`$GRADLE_USER_HOME/caches/modules-2`), and the direct set from
+the coordinates written as string literals in `build.gradle` or
+`build.gradle.kts`. A Gradle build without dependency locking is not covered:
+without a lockfile, what Gradle resolves depends on running Gradle.
+
 Not yet parsed, so a project relying on one of these is **not** covered by the
-ecosystem's row above: `pnpm-lock.yaml`, `go.sum`, Gradle builds, and the .NET
-ecosystem entirely.
+ecosystem's row above: `pnpm-lock.yaml`, Gradle builds without dependency
+locking, and the .NET ecosystem entirely.
 
 ### What the SCA Engine Reports
 

@@ -189,6 +189,12 @@ func TestGoModParser(t *testing.T) {
 	if sys.Ecosystem != "go" {
 		t.Errorf("sys ecosystem = %q, want %q", sys.Ecosystem, "go")
 	}
+	if sys.Direct {
+		t.Error("a requirement marked // indirect is not direct")
+	}
+	if !color.Direct {
+		t.Error("a requirement without the marker is direct")
+	}
 }
 
 func TestGoModParserSingleLineRequire(t *testing.T) {
@@ -315,38 +321,6 @@ func TestPubspecParser(t *testing.T) {
 	}
 }
 
-func TestPomXMLParser(t *testing.T) {
-	path := writeManifest(t, "pom.xml", strings.Join([]string{
-		"<project>",
-		"  <dependencies>",
-		"    <dependency>",
-		"      <groupId>org.apache.logging.log4j</groupId>",
-		"      <artifactId>log4j-core</artifactId>",
-		"      <version>2.14.1</version>",
-		"    </dependency>",
-		"    <dependency>",
-		"      <artifactId>property-driven</artifactId>",
-		"      <version>${spring.version}</version>",
-		"    </dependency>",
-		"  </dependencies>",
-		"</project>",
-	}, "\n"))
-
-	deps, err := (&PomXMLParser{}).Parse(path)
-	if err != nil {
-		t.Fatalf("Parse returned error: %v", err)
-	}
-
-	// A ${...} placeholder is not a resolvable version, so it is skipped.
-	if got := depNames(deps); !equalStrings(got, []string{"log4j-core"}) {
-		t.Fatalf("parsed %v, want [log4j-core]", got)
-	}
-	log4j, _ := findDep(deps, "log4j-core")
-	if log4j.Version != "2.14.1" {
-		t.Errorf("log4j-core version = %q, want %q", log4j.Version, "2.14.1")
-	}
-}
-
 func TestStripVersionPrefix(t *testing.T) {
 	tests := []struct {
 		in, want string
@@ -469,9 +443,9 @@ func TestCheckKnownVulnerabilitiesMatchesOnExactVersion(t *testing.T) {
 	e := &Engine{}
 
 	findings := e.checkKnownVulnerabilities([]Dependency{
-		{Name: "log4j-core", Version: "2.14.1", Ecosystem: "maven", File: "pom.xml"},
+		{Name: "org.apache.logging.log4j:log4j-core", Version: "2.14.1", Ecosystem: "maven", File: "pom.xml"},
 		// Same package, a version that is not affected.
-		{Name: "log4j-core", Version: "2.17.1", Ecosystem: "maven", File: "pom.xml"},
+		{Name: "org.apache.logging.log4j:log4j-core", Version: "2.17.1", Ecosystem: "maven", File: "pom.xml"},
 	})
 
 	if len(findings) != 1 {
@@ -483,23 +457,6 @@ func TestCheckKnownVulnerabilitiesMatchesOnExactVersion(t *testing.T) {
 	}
 	if f.FixedVersion != "2.17.1" {
 		t.Errorf("FixedVersion = %q, want %q", f.FixedVersion, "2.17.1")
-	}
-}
-
-func TestExtractXMLTag(t *testing.T) {
-	tests := []struct {
-		line, tag, want string
-	}{
-		{"  <artifactId>log4j-core</artifactId>", "artifactId", "log4j-core"},
-		{"<version> 2.14.1 </version>", "version", "2.14.1"},
-		{"<artifactId>unclosed", "artifactId", ""},
-		{"nothing here", "version", ""},
-	}
-
-	for _, tt := range tests {
-		if got := extractXMLTag(tt.line, tt.tag); got != tt.want {
-			t.Errorf("extractXMLTag(%q, %q) = %q, want %q", tt.line, tt.tag, got, tt.want)
-		}
 	}
 }
 

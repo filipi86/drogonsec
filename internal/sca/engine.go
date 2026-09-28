@@ -89,6 +89,12 @@ type ManifestParser interface {
 	Parse(filePath string) ([]Dependency, error)
 }
 
+// noter is implemented by a parser that has something to say about coverage
+// once every manifest has been read.
+type noter interface {
+	notes() []string
+}
+
 // Engine performs Software Composition Analysis
 type Engine struct {
 	targetPath string
@@ -113,12 +119,14 @@ func (e *Engine) registerParsers() {
 		&PoetryLockParser{},
 		&PipfileLockParser{},
 		&UVLockParser{},
-		&PackageJSONParser{},
+		&PubspecLockParser{},
+		&GoModParser{},
+		&GradleLockParser{},
 		&PomXMLParser{},
+		&PackageJSONParser{},
 		&PyProjectParser{},
 		&RequirementsTXTParser{},
 		&GemfileParser{},
-		&GoModParser{},
 		&ComposerParser{},
 		&CargoTOMLParser{},
 		&PubspecParser{},
@@ -140,6 +148,16 @@ func (e *Engine) Analyze() ([]Finding, error) {
 	}
 
 	ui.Printf("  Found %d dependencies across %d manifest files\n", len(deps), e.countUniqueFiles(deps))
+
+	// A parser that could only see part of a tree says so. The silence
+	// otherwise reads the same as a tree that had nothing more in it.
+	for _, parser := range e.parsers {
+		if n, ok := parser.(noter); ok {
+			for _, note := range n.notes() {
+				ui.Printf("  %s\n", note)
+			}
+		}
+	}
 
 	// Saying nothing here would be the worst outcome of the change: a scan that
 	// reports no vulnerabilities because it could not look, reading exactly
@@ -368,7 +386,8 @@ func (e *Engine) checkKnownVulnerabilities(deps []Dependency) []Finding {
 		fixed    string
 		desc     string
 	}{
-		"log4j-core": {
+		// Maven artifacts are named groupId:artifactId, as OSV names them.
+		"org.apache.logging.log4j:log4j-core": {
 			{"2.14.1", "CVE-2021-44228", config.SeverityCritical, 10.0, "2.17.1",
 				"Log4Shell: Remote code execution via JNDI lookup in log messages"},
 			{"2.14.0", "CVE-2021-44228", config.SeverityCritical, 10.0, "2.17.1",
@@ -394,11 +413,11 @@ func (e *Engine) checkKnownVulnerabilities(deps []Dependency) []Finding {
 			{"4.0.3", "CVE-2022-28347", config.SeverityHigh, 9.8, "4.0.4",
 				"SQL injection vulnerability"},
 		},
-		"struts2-core": {
+		"org.apache.struts:struts2-core": {
 			{"2.3.34", "CVE-2017-5638", config.SeverityCritical, 10.0, "2.3.35",
 				"RCE via Jakarta Multipart parser (Equifax breach vector)"},
 		},
-		"jackson-databind": {
+		"com.fasterxml.jackson.core:jackson-databind": {
 			{"2.9.8", "CVE-2019-14379", config.SeverityCritical, 9.8, "2.9.9.3",
 				"Deserialization flaw allows remote code execution"},
 		},
@@ -728,82 +747,6 @@ func parseGemSpec(line string) (name, version string, ok bool) {
 	return name, version, true
 }
 
-// GoModParser parses Go go.mod files
-type GoModParser struct{}
-
-func (p *GoModParser) Name() string    { return "go" }
-func (p *GoModParser) Files() []string { return []string{"go.mod"} }
-func (p *GoModParser) Parse(path string) ([]Dependency, error) {
-	data, err := readManifestFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var deps []Dependency
-	inRequire := false
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "require (" {
-			inRequire = true
-			continue
-		}
-		if line == ")" {
-			inRequire = false
-			continue
-		}
-		if inRequire || strings.HasPrefix(line, "require ") {
-			parts := strings.Fields(strings.TrimPrefix(line, "require "))
-			if len(parts) >= 2 {
-				deps = append(deps, Dependency{
-					Name:      parts[0],
-					Version:   strings.TrimSuffix(parts[1], " // indirect"),
-					Ecosystem: "go",
-					File:      path,
-				})
-			}
-		}
-	}
-	return deps, nil
-}
-
-// PomXMLParser parses Java Maven pom.xml files (simplified)
-type PomXMLParser struct{}
-
-func (p *PomXMLParser) Name() string    { return "maven" }
-func (p *PomXMLParser) Files() []string { return []string{"pom.xml"} }
-func (p *PomXMLParser) Parse(path string) ([]Dependency, error) {
-	data, err := readManifestFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Simple regex-based extraction for pom.xml (full XML parsing in Phase 2)
-	content := string(data)
-	var deps []Dependency
-
-	// Find artifactId/version pairs in dependencies section
-	lines := strings.Split(content, "\n")
-	var artifactID, version string
-	for _, line := range lines {
-		if strings.Contains(line, "<artifactId>") {
-			artifactID = extractXMLTag(line, "artifactId")
-		}
-		if strings.Contains(line, "<version>") && artifactID != "" {
-			version = extractXMLTag(line, "version")
-			if artifactID != "" && version != "" && !strings.HasPrefix(version, "${") {
-				deps = append(deps, Dependency{
-					Name:      artifactID,
-					Version:   version,
-					Ecosystem: "maven",
-					File:      path,
-				})
-				artifactID = ""
-			}
-		}
-	}
-	return deps, nil
-}
-
 // ComposerParser parses PHP composer.json files
 type ComposerParser struct{}
 
@@ -891,16 +834,4 @@ func (p *PubspecParser) Parse(path string) ([]Dependency, error) {
 	addDeps(pubspec.Dependencies)
 	addDeps(pubspec.DevDependencies)
 	return deps, nil
-}
-
-// extractXMLTag extracts content from a simple XML tag
-func extractXMLTag(line, tag string) string {
-	open := fmt.Sprintf("<%s>", tag)
-	close := fmt.Sprintf("</%s>", tag)
-	start := strings.Index(line, open)
-	end := strings.Index(line, close)
-	if start == -1 || end == -1 {
-		return ""
-	}
-	return strings.TrimSpace(line[start+len(open) : end])
 }
